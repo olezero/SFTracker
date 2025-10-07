@@ -82,62 +82,60 @@
 						{
 							@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Recipe.Name))
 							{
-								<div class="p-3 mb-3">
-									<div class="d-flex justify-content-between align-items-start mb-2">
-										<div class="d-flex align-items-center">
-											<h6 class="mb-0 me-2">@factoryRecipe.Recipe.Name</h6>
-											@if (editingRecipeId == factoryRecipe.Id)
-											{
-												<div class="d-flex align-items-center">
-													<span class="me-2">Multiplier:</span>
-													<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-														   style="width: 100px;" step="0.1" min="0.1">
-													<button class="btn btn-sm btn-secondary me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-														<i class="bi bi-check"></i>
-													</button>
-													<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
-														<i class="bi bi-x"></i>
-													</button>
-												</div>
-											}
-											else
-											{
-												<span class="badge bg-secondary me-2">@factoryRecipe.Multiplier x</span>
-												<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
-													<i class="bi bi-pencil"></i>
+								<div class="d-flex justify-content-between align-items-start mb-2">
+									<div class="d-flex align-items-center">
+										<h6 class="mb-0 me-2">@factoryRecipe.Recipe.Name</h6>
+										@if (editingRecipeId == factoryRecipe.Id)
+										{
+											<div class="d-flex align-items-center">
+												<span class="me-2">Multiplier:</span>
+												<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
+														style="width: 100px;" step="0.1" min="0.1">
+												<button class="btn btn-sm btn-secondary me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+													<i class="bi bi-check"></i>
 												</button>
-												<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
-													<i class="bi bi-trash"></i>
+												<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
+													<i class="bi bi-x"></i>
 												</button>
-											}
-										</div>
+											</div>
+										}
+										else
+										{
+											<span class="badge bg-secondary me-2">@factoryRecipe.Multiplier x</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
 									</div>
+								</div>
 
-									<div class="row">
-										<div class="col-6">
-											<small class="text-muted">Inputs:</small>
-											@foreach (var input in factoryRecipe.Recipe.Inputs)
-											{
-												<div class="d-flex align-items-center small mb-1">
-													<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-1"
-														 style="width: 16px; height: 16px; object-fit: contain;" onerror="this.style.display='none'">
-													<span class="me-1">@input.Part.Name</span>
-													<span class="badge bg-secondary">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
-												</div>
-											}
-										</div>
-										<div class="col-6">
-											<small class="text-muted">Outputs:</small>
-											@foreach (var output in factoryRecipe.Recipe.Outputs)
-											{
-												<div class="d-flex align-items-center small mb-1">
-													<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-1"
-														 style="width: 16px; height: 16px; object-fit: contain;" onerror="this.style.display='none'">
-													<span class="me-1">@output.Part.Name</span>
-													<span class="badge bg-secondary">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
-												</div>
-											}
-										</div>
+								<div class="row">
+									<div class="col-6">
+										<small class="text-muted">Inputs:</small>
+										@foreach (var input in factoryRecipe.Recipe.Inputs)
+										{
+											<div class="d-flex align-items-center mb-2">
+												<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+														style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+												<span class="me-2 flex-grow-1">@input.Part.Name</span>
+												<span class="badge bg-secondary me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+											</div>
+										}
+									</div>
+									<div class="col-6">
+										<small class="text-muted">Outputs:</small>
+										@foreach (var output in factoryRecipe.Recipe.Outputs)
+										{
+											<div class="d-flex align-items-center mb-2">
+												<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+														style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+												<span class="me-2 flex-grow-1">@output.Part.Name</span>
+												<span class="badge bg-secondary me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+											</div>
+										}
 									</div>
 								</div>
 							}
@@ -400,13 +398,10 @@
 
     private async Task TriggerBalanceRefresh()
     {
-		Console.WriteLine($"Triggering balance refresh from FactoryManager. Component is null: {ResourceBalanceComponent == null}");
         if (ResourceBalanceComponent != null)
         {
             await ResourceBalanceComponent.RefreshBalanceDebounced();
-        } else {
-			Console.WriteLine("ResourceBalanceComponent is null - cannot refresh balance.");
-		}
+        }
     }
 
     private void SelectFactory(Factory factory)

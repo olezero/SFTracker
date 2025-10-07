@@ -4,6 +4,13 @@ using SFTracker.Components;
 using SFTracker.Data;
 using SFTracker.Services;
 
+// If Database folder does not exist, create it
+var dbFolder = "Database";
+if (!Directory.Exists(dbFolder)) {
+	Directory.CreateDirectory(dbFolder);
+}
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -22,7 +29,7 @@ builder.Services.AddBootstrapSelect(defaults => {
 
 // Add Entity Framework
 builder.Services.AddDbContext<SFTrackerDbContext>(options =>
-	options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=sftracker.db"));
+	options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=Database/sftracker.db"));
 
 // Add services
 builder.Services.AddSingleton<GameInfoService>();

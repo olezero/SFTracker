@@ -36,21 +36,6 @@
 			<div class="card-body">
 				@if (factories.Any())
 				{
-					@* <div class="list-group">
-						@foreach (var factory in factories.OrderBy(f => f.Sorting))
-						{
-							<a href="#" class="list-group-item list-group-item-action @(selectedFactory?.Id == factory.Id ? "active" : "")"
-								@onclick="() => SelectFactory(factory)"
-								@onclick:preventDefault="true">
-								<div class="d-flex w-100 justify-content-between">
-									<h6 class="mb-1">@factory.Name</h6>
-									<small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small>
-								</div>
-							</a>
-						}
-					</div> *@
-
-
 				<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
 					<ItemTemplate>
 						<div class="d-flex w-100 justify-content-between sortable-factory-item @(selectedFactory?.Id == factory.Id ? "selected" : "")"
@@ -496,7 +481,7 @@
         ResourceBalanceComponent = null;
     }
 
-	private void OnFactoryListUpdate(SortableListEventArgs args) {
+	private async Task OnFactoryListUpdate(SortableListEventArgs args) {
 		Console.WriteLine("Factory list updated via drag-and-drop.");
 		var itemToMove = factories[args.OldIndex];
         factories.RemoveAt(args.OldIndex);
@@ -509,7 +494,7 @@
 		// Update all sorting values on factories based on the current order
 		for (int i = 0; i < factories.Count; i++) {
 			factories[i].Sorting = i;
-			FactoryService.UpdateFactoryAsync(factories[i]); // Fire and forget
+			await FactoryService.UpdateFactoryAsync(factories[i]); // Fire and forget
 		}
 	}
 }

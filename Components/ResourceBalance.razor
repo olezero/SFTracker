@@ -177,37 +177,46 @@
 
 			// Calculate custom consumption (manual inputs)
 			var customConsumption = factories.SelectMany(f => f.Inputs)
-				.Where(i => i.PartId == partId)
-				.Sum(i => i.AmountPerMinute);
+			.Where(i => i.PartId == partId)
+			.Sum(i => i.AmountPerMinute);
 
 			// Calculate custom production (manual outputs)
 			var customProduction = factories.SelectMany(f => f.Outputs)
-				.Where(o => o.PartId == partId)
-				.Sum(o => o.AmountPerMinute);
+			.Where(o => o.PartId == partId)
+			.Sum(o => o.AmountPerMinute);
 
 			// Calculate recipe consumption (recipe inputs) - only include enabled inputs
 			var recipeConsumption = factories.SelectMany(f => f.Recipes)
-				.SelectMany(fr => fr.Recipe.Inputs.Where(ri => ri.PartId == partId)
-					.Where(ri => {
-						var override_ = fr.InputOverrides.FirstOrDefault(o => o.RecipeInputId == ri.Id);
-						return override_?.IsEnabled ?? true; // Default to enabled if no override
-					})
-					.Select(ri => (double)(ri.Quantity * fr.Multiplier)))
-				.Sum();
+			.SelectMany(fr => fr.Recipe.Inputs.Where(ri => ri.PartId == partId)
+			.Where(ri =>
+			{
+				var override_ = fr.InputOverrides.FirstOrDefault(o => o.RecipeInputId == ri.Id);
+				return override_?.IsEnabled ?? true; // Default to enabled if no override
+			})
+			// .Select(ri => (double)(ri.Quantity * fr.Multiplier)))
+			.Select(ri => (double)(ri.GetQuantityPerMinute(fr.Multiplier))))
+			.Sum();
 
 			// Calculate recipe production (recipe outputs) - only include enabled outputs
 			var recipeProduction = factories.SelectMany(f => f.Recipes)
-				.SelectMany(fr => fr.Recipe.Outputs.Where(ro => ro.PartId == partId)
-					.Where(ro => {
-						var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
-						return override_?.IsEnabled ?? true; // Default to enabled if no override
-					})
-					.Select(ro => (double)(ro.Quantity * fr.Multiplier)))
-				.Sum();
+			.SelectMany(fr => fr.Recipe.Outputs.Where(ro => ro.PartId == partId)
+			.Where(ro =>
+			{
+				var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
+				return override_?.IsEnabled ?? true; // Default to enabled if no override
+			})
+			@* .Select(ro => (double)(ro.Quantity * fr.Multiplier))) *@
+			.Select(ro => (double)(ro.GetQuantityPerMinute(fr.Multiplier))))
+			.Sum();
 
 			// Total consumption and production
 			var totalConsumption = customConsumption + recipeConsumption;
 			var totalProduction = customProduction + recipeProduction;
+
+			if (totalConsumption == 0 && totalProduction == 0)
+			{
+				continue; // Skip parts with no activity
+			}
 
 			partBalances.Add(new PartBalance
 			{

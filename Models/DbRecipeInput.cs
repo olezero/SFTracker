@@ -19,4 +19,7 @@ public class DbRecipeInput {
 
 	[ForeignKey(nameof(RecipeId))]
 	public DbRecipe Recipe { get; set; } = null!;
+
+	public decimal GetQuantityPerMinute(decimal multiplier) => Quantity * multiplier / Recipe.TimeSeconds * 60;
+	public decimal GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60;
 }

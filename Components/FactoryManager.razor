@@ -134,7 +134,7 @@
 										<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 										<span class="me-2 flex-grow-1">@input.Part.Name</span>
-										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min</span>
 										@if (!isEnabled)
 										{
 											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
@@ -155,7 +155,7 @@
 										<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 										<span class="me-2 flex-grow-1">@output.Part.Name</span>
-										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min</span>
 										@if (!isEnabled)
 										{
 											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>

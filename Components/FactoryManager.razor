@@ -74,181 +74,168 @@
 					</div>
 				</div>
 				<div class="card-body">
-					<div class="row">
-						<!-- Inputs Column -->
-						<div class="col-md-6">
-							<h6>Inputs</h6>
+					<!-- Recipe Sections -->
+					@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Recipe.Name))
+					{
+						<div class="row mb-4 border-bottom pb-3">
+							<!-- Recipe Header -->
+							<div class="col-12 mb-3">
+								<div class="d-flex justify-content-between align-items-center">
+									<div class="d-flex align-items-center">
+										<small class="text-muted me-2">Recipe:</small>
+										<strong class="me-2">@factoryRecipe.Recipe.Name</strong>
+										@if (editingRecipeId == factoryRecipe.Id)
+										{
+											<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
+												   style="width: 80px;" step="0.1" min="0.1">
+											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+												<i class="bi bi-check"></i>
+											</button>
+											<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
+												<i class="bi bi-x"></i>
+											</button>
+										}
+										else
+										{
+											<span class="badge bg-info me-2">@factoryRecipe.Multiplier x</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
+									</div>
+								</div>
+							</div>
 
 							<!-- Recipe Inputs -->
-							@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Recipe.Name))
-							{
-								<div class="mb-3">
-									<div class="d-flex justify-content-between align-items-center mb-2">
-										<div class="d-flex align-items-center">
-											<small class="text-muted me-2">Recipe:</small>
-											<strong class="me-2">@factoryRecipe.Recipe.Name</strong>
-											@if (editingRecipeId == factoryRecipe.Id)
-											{
-												<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-													   style="width: 80px;" step="0.1" min="0.1">
-												<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-													<i class="bi bi-check"></i>
-												</button>
-												<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
-													<i class="bi bi-x"></i>
-												</button>
-											}
-											else
-											{
-												<span class="badge bg-info me-2">@factoryRecipe.Multiplier x</span>
-												<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
-													<i class="bi bi-pencil"></i>
-												</button>
-												<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
-													<i class="bi bi-trash"></i>
-												</button>
-											}
-										</div>
+							<div class="col-md-6">
+								<h6 class="text-muted small">Inputs</h6>
+								@foreach (var input in factoryRecipe.Recipe.Inputs)
+								{
+									<div class="d-flex align-items-center mb-2">
+										<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+										<span class="me-2 flex-grow-1">@input.Part.Name</span>
+										<span class="badge bg-secondary me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
 									</div>
+								}
+							</div>
 
-									@foreach (var input in factoryRecipe.Recipe.Inputs)
-									{
-										<div class="d-flex align-items-center mb-2 ms-3">
+							<!-- Recipe Outputs -->
+							<div class="col-md-6">
+								<h6 class="text-muted small">Outputs</h6>
+								@foreach (var output in factoryRecipe.Recipe.Outputs)
+								{
+									<div class="d-flex align-items-center mb-2">
+										<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+										<span class="me-2 flex-grow-1">@output.Part.Name</span>
+										<span class="badge bg-secondary me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+									</div>
+								}
+							</div>
+						</div>
+					}
+
+					<!-- Custom Input/Output Section -->
+					@if (selectedFactory.Inputs.Any() || selectedFactory.Outputs.Any())
+					{
+						<div class="row mb-4">
+							<!-- Custom Section Header -->
+							<div class="col-12 mb-3">
+								<div class="d-flex align-items-center">
+									<small class="text-muted me-2">Custom:</small>
+									<strong>Input/Output</strong>
+								</div>
+							</div>
+
+							<!-- Custom Inputs -->
+							<div class="col-md-6">
+								<h6 class="text-muted small">Inputs</h6>
+								@foreach (var input in selectedFactory.Inputs.OrderBy(i => i.Part.Name))
+								{
+									<div class="d-flex align-items-center mb-2">
+										@if (editingInputId == input.Id)
+										{
+											<!-- Edit mode -->
+											<img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2"
+												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<div class="flex-grow-1 me-2">
+												<PartSelector Parts="@allParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..." CssClass="form-select-sm" />
+											</div>
+											<div class="me-2" style="width: 100px;">
+												<input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1" min="0.1">
+											</div>
+											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveInputEdit(input.Id)">
+												<i class="bi bi-check"></i>
+											</button>
+											<button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
+												<i class="bi bi-x"></i>
+											</button>
+										}
+										else
+										{
+											<!-- View mode -->
 											<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 											<span class="me-2 flex-grow-1">@input.Part.Name</span>
-											<span class="badge bg-secondary me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
-										</div>
-									}
-								</div>
-							}
-
-							<!-- Custom Inputs -->
-							@if (selectedFactory.Inputs.Any())
-							{
-								<div class="mb-3">
-									<div class="mb-2">
-										<small class="text-muted me-2">Custom:</small>
-										<strong>Input/Output</strong>
+											<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
 									</div>
+								}
+							</div>
 
-									@foreach (var input in selectedFactory.Inputs.OrderBy(i => i.Part.Name))
-									{
-										<div class="d-flex align-items-center mb-2 ms-3">
-											@if (editingInputId == input.Id)
-											{
-												<!-- Edit mode -->
-												<img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2"
-													 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-												<div class="flex-grow-1 me-2">
-													<PartSelector Parts="@allParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-												</div>
-												<div class="me-2" style="width: 100px;">
-													<input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1" min="0.1">
-												</div>
-												<button class="btn btn-sm btn-success me-1" @onclick="() => SaveInputEdit(input.Id)">
-													<i class="bi bi-check"></i>
-												</button>
-												<button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
-													<i class="bi bi-x"></i>
-												</button>
-											}
-											else
-											{
-												<!-- View mode -->
-												<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-													 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-												<span class="me-2 flex-grow-1">@input.Part.Name</span>
-												<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
-												<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
-													<i class="bi bi-pencil"></i>
-												</button>
-												<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
-													<i class="bi bi-trash"></i>
-												</button>
-											}
-										</div>
-									}
-								</div>
-							}
-						</div>
-
-						<!-- Outputs Column -->
-						<div class="col-md-6">
-							<h6>Outputs</h6>
-
-							<!-- Recipe Outputs -->
-							@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Recipe.Name))
-							{
-								<div class="mb-3">
-									<div class="mb-2">
-										<small class="text-muted me-2">Recipe:</small>
-										<strong>@factoryRecipe.Recipe.Name</strong>
-										<span class="badge bg-info ms-2">@factoryRecipe.Multiplier x</span>
-									</div>
-
-									@foreach (var output in factoryRecipe.Recipe.Outputs)
-									{
-										<div class="d-flex align-items-center mb-2 ms-3">
+							<!-- Custom Outputs -->
+							<div class="col-md-6">
+								<h6 class="text-muted small">Outputs</h6>
+								@foreach (var output in selectedFactory.Outputs.OrderBy(o => o.Part.Name))
+								{
+									<div class="d-flex align-items-center mb-2">
+										@if (editingOutputId == output.Id)
+										{
+											<!-- Edit mode -->
+											<img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2"
+												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<div class="flex-grow-1 me-2">
+												<PartSelector Parts="@allParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..." CssClass="form-select-sm" />
+											</div>
+											<div class="me-2" style="width: 100px;">
+												<input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1" min="0.1">
+											</div>
+											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveOutputEdit(output.Id)">
+												<i class="bi bi-check"></i>
+											</button>
+											<button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
+												<i class="bi bi-x"></i>
+											</button>
+										}
+										else
+										{
+											<!-- View mode -->
 											<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 											<span class="me-2 flex-grow-1">@output.Part.Name</span>
-											<span class="badge bg-secondary me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
-										</div>
-									}
-								</div>
-							}
-
-							<!-- Custom Outputs -->
-							@if (selectedFactory.Outputs.Any())
-							{
-								<div class="mb-3">
-									<div class="mb-2">
-										<small class="text-muted me-2">Custom:</small>
-										<strong>Input/Output</strong>
+											<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
 									</div>
-
-									@foreach (var output in selectedFactory.Outputs.OrderBy(o => o.Part.Name))
-									{
-										<div class="d-flex align-items-center mb-2 ms-3">
-											@if (editingOutputId == output.Id)
-											{
-												<!-- Edit mode -->
-												<img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2"
-													 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-												<div class="flex-grow-1 me-2">
-													<PartSelector Parts="@allParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-												</div>
-												<div class="me-2" style="width: 100px;">
-													<input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1" min="0.1">
-												</div>
-												<button class="btn btn-sm btn-success me-1" @onclick="() => SaveOutputEdit(output.Id)">
-													<i class="bi bi-check"></i>
-												</button>
-												<button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
-													<i class="bi bi-x"></i>
-												</button>
-											}
-											else
-											{
-												<!-- View mode -->
-												<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-													 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-												<span class="me-2 flex-grow-1">@output.Part.Name</span>
-												<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
-												<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
-													<i class="bi bi-pencil"></i>
-												</button>
-												<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
-													<i class="bi bi-trash"></i>
-												</button>
-											}
-										</div>
-									}
-								</div>
-							}
+								}
+							</div>
 						</div>
-					</div>
+					}
 
 					<hr />
 

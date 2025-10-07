@@ -43,7 +43,8 @@
 							data-factory-id="@factory.Id"
 							data-selected="@(selectedFactory?.Id == factory.Id)">
 							<h6 class="mb-1">@factory.Name</h6>
-							<small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small>
+							@* <small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small> *@
+							<small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
 						</div>
 					</ItemTemplate>
 				</SortableList>
@@ -125,11 +126,19 @@
 							<div class="col-md-6">
 								@foreach (var input in factoryRecipe.Recipe.Inputs)
 								{
-									<div class="d-flex align-items-center mb-2">
+									var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
+									<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
+										 style="cursor: pointer;"
+										 @onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
+										 title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
 										<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 										<span class="me-2 flex-grow-1">@input.Part.Name</span>
-										<span class="badge bg-secondary me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										@if (!isEnabled)
+										{
+											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
+										}
 									</div>
 								}
 							</div>
@@ -138,11 +147,19 @@
 							<div class="col-md-6">
 								@foreach (var output in factoryRecipe.Recipe.Outputs)
 								{
-									<div class="d-flex align-items-center mb-2">
+									var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
+									<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
+										 style="cursor: pointer;"
+										 @onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
+										 title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
 										<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 										<span class="me-2 flex-grow-1">@output.Part.Name</span>
-										<span class="badge bg-secondary me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+										@if (!isEnabled)
+										{
+											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
+										}
 									</div>
 								}
 							</div>
@@ -663,5 +680,26 @@
 			factories[i].Sorting = i;
 			await FactoryService.UpdateFactoryAsync(factories[i]); // Fire and forget
 		}
+	}
+
+	private int GetFactoryInputCount(Factory factory) => factory.Inputs.Count + factory.Recipes.Sum(r => r.Recipe.Inputs.Count);
+	private int GetFactoryOutputCount(Factory factory) => factory.Outputs.Count + factory.Recipes.Sum(r => r.Recipe.Outputs.Count);
+
+	/// <summary>
+	/// Toggle whether a recipe input is enabled/disabled for balance calculations
+	/// </summary>
+	private async Task ToggleRecipeInput(int factoryRecipeId, int recipeInputId)
+	{
+		await FactoryService.ToggleRecipeInputAsync(factoryRecipeId, recipeInputId);
+		await LoadDataAndRefreshBalance();
+	}
+
+	/// <summary>
+	/// Toggle whether a recipe output is enabled/disabled for balance calculations
+	/// </summary>
+	private async Task ToggleRecipeOutput(int factoryRecipeId, int recipeOutputId)
+	{
+		await FactoryService.ToggleRecipeOutputAsync(factoryRecipeId, recipeOutputId);
+		await LoadDataAndRefreshBalance();
 	}
 }

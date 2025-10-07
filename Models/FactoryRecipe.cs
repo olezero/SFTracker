@@ -28,4 +28,8 @@ public class FactoryRecipe {
 
 	[ForeignKey(nameof(RecipeId))]
 	public DbRecipe Recipe { get; set; } = null!;
+
+	// Navigation properties for overrides
+	public ICollection<FactoryRecipeInputOverride> InputOverrides { get; set; } = new List<FactoryRecipeInputOverride>();
+	public ICollection<FactoryRecipeOutputOverride> OutputOverrides { get; set; } = new List<FactoryRecipeOutputOverride>();
 }

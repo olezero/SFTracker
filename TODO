@@ -1,0 +1,23 @@
+Add recipe modal
+	Would like the option to input either a multiplier, or input one of the inputs or one of the outputs and have the rest be caclulated on the fly.
+
+
+So "Add Recipe" button
+	Modal opens
+		Select recipe from dropdown
+			Model renders inputs and outputs as "input fields"
+			    if a field is changed, the rest are recalculated based on the recipe ratios
+		"Add Recipe" button to confirm and add to factory
+
+
+Add option to disable individual input/output on recipes from being included in total calculation
+	Would like to be able to disable individual inputs/outputs from being included in the total calculation.
+	For example, if a recipe has a byproduct that is not used in the factory, it should not be included in the total calculation.
+	Similarly, if an input is being supplied externally and should not be included in the total calculation, it should be able to be disabled.
+
+	Add a checkbox next to each input/output in the recipe modal to enable/disable it from the total calculation.
+	When disabled, the input/output should be visually indicated (e.g., greyed out).
+
+
+	Or we could just allow the user to click the input/output itself to toggle it on/off for inclusion in the total calculation.
+	When disabled, the input/output should be visually indicated (e.g., greyed out).

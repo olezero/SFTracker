@@ -9,6 +9,8 @@ public class SFTrackerDbContext(DbContextOptions<SFTrackerDbContext> options) : 
 	public DbSet<FactoryInput> FactoryInputs { get; set; }
 	public DbSet<FactoryOutput> FactoryOutputs { get; set; }
 	public DbSet<FactoryRecipe> FactoryRecipes { get; set; }
+	public DbSet<FactoryRecipeInputOverride> FactoryRecipeInputOverrides { get; set; }
+	public DbSet<FactoryRecipeOutputOverride> FactoryRecipeOutputOverrides { get; set; }
 	public DbSet<Network> Networks { get; set; }
 	public DbSet<DbRecipe> Recipes { get; set; }
 	public DbSet<DbRecipeInput> RecipeParts { get; set; }

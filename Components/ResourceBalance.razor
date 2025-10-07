@@ -4,7 +4,7 @@
 @implements IDisposable
 
 
-<div class="card h-100">
+<div class="card">
 	<div class="card-header d-flex justify-content-between align-items-center">
 		<h5 class="mb-0">Resource Balance</h5>
 		<button class="btn btn-outline-primary btn-sm" @onclick="RefreshBalance">
@@ -143,44 +143,78 @@
 			StateHasChanged();
 		}
 	}
-
 	private async Task LoadPartBalances()
 	{
 		var factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
 		var allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
 
-		// Get all parts that are used in any factory (inputs or outputs)
+		// Get all parts that are used in any factory (inputs, outputs, or recipes)
 		var usedPartIds = new HashSet<int>();
 
 		foreach (var factory in factories)
 		{
+			// Custom inputs and outputs
 			foreach (var input in factory.Inputs)
 				usedPartIds.Add(input.PartId);
 			foreach (var output in factory.Outputs)
 				usedPartIds.Add(output.PartId);
+
+			// Recipe inputs and outputs
+			foreach (var factoryRecipe in factory.Recipes)
+			{
+				foreach (var recipeInput in factoryRecipe.Recipe.Inputs)
+					usedPartIds.Add(recipeInput.PartId);
+				foreach (var recipeOutput in factoryRecipe.Recipe.Outputs)
+					usedPartIds.Add(recipeOutput.PartId);
+			}
 		}
 
 		partBalances = new List<PartBalance>();
-
 		foreach (var partId in usedPartIds)
 		{
 			var part = allParts.FirstOrDefault(p => p.Id == partId);
 			if (part == null) continue;
 
-			var consumption = factories.SelectMany(f => f.Inputs)
-			.Where(i => i.PartId == partId)
-			.Sum(i => i.AmountPerMinute);
+			// Calculate custom consumption (manual inputs)
+			var customConsumption = factories.SelectMany(f => f.Inputs)
+				.Where(i => i.PartId == partId)
+				.Sum(i => i.AmountPerMinute);
 
-			var production = factories.SelectMany(f => f.Outputs)
-			.Where(o => o.PartId == partId)
-			.Sum(o => o.AmountPerMinute);
+			// Calculate custom production (manual outputs)
+			var customProduction = factories.SelectMany(f => f.Outputs)
+				.Where(o => o.PartId == partId)
+				.Sum(o => o.AmountPerMinute);
+
+			// Calculate recipe consumption (recipe inputs) - only include enabled inputs
+			var recipeConsumption = factories.SelectMany(f => f.Recipes)
+				.SelectMany(fr => fr.Recipe.Inputs.Where(ri => ri.PartId == partId)
+					.Where(ri => {
+						var override_ = fr.InputOverrides.FirstOrDefault(o => o.RecipeInputId == ri.Id);
+						return override_?.IsEnabled ?? true; // Default to enabled if no override
+					})
+					.Select(ri => (double)(ri.Quantity * fr.Multiplier)))
+				.Sum();
+
+			// Calculate recipe production (recipe outputs) - only include enabled outputs
+			var recipeProduction = factories.SelectMany(f => f.Recipes)
+				.SelectMany(fr => fr.Recipe.Outputs.Where(ro => ro.PartId == partId)
+					.Where(ro => {
+						var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
+						return override_?.IsEnabled ?? true; // Default to enabled if no override
+					})
+					.Select(ro => (double)(ro.Quantity * fr.Multiplier)))
+				.Sum();
+
+			// Total consumption and production
+			var totalConsumption = customConsumption + recipeConsumption;
+			var totalProduction = customProduction + recipeProduction;
 
 			partBalances.Add(new PartBalance
 			{
 				PartName = part.Name,
 				ImageUrl = part.ImageUrl ?? "",
-				Consumption = consumption,
-				Production = production,
+				Consumption = totalConsumption,
+				Production = totalProduction,
 				Tier = part.Tier ?? ""
 			});
 		}

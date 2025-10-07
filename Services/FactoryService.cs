@@ -27,6 +27,10 @@ public class FactoryService {
 				.ThenInclude(r => r.Recipe)
 				.ThenInclude(r => r.Outputs)
 				.ThenInclude(ro => ro.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.InputOverrides)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.OutputOverrides)
 			.OrderBy(f => f.Sorting)
 			.AsSplitQuery()
 			.ToListAsync();
@@ -48,6 +52,10 @@ public class FactoryService {
 				.ThenInclude(r => r.Recipe)
 				.ThenInclude(r => r.Outputs)
 				.ThenInclude(ro => ro.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.InputOverrides)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.OutputOverrides)
 			.AsSplitQuery()
 			.FirstOrDefaultAsync(f => f.Id == id);
 	}
@@ -195,5 +203,71 @@ public class FactoryService {
 			.OrderBy(r => r.Name)
 			.AsSplitQuery()
 			.ToListAsync();
+	}
+
+	/// <summary>
+	/// Toggle whether a recipe input is enabled/disabled for balance calculations
+	/// </summary>
+	public async Task ToggleRecipeInputAsync(int factoryRecipeId, int recipeInputId) {
+		var existingOverride = await m_context.FactoryRecipeInputOverrides
+			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeInputId == recipeInputId);
+
+		if (existingOverride == null) {
+			// No override exists, so input is currently enabled - create disabled override
+			var newOverride = new FactoryRecipeInputOverride {
+				FactoryRecipeId = factoryRecipeId,
+				RecipeInputId = recipeInputId,
+				IsEnabled = false
+			};
+			m_context.FactoryRecipeInputOverrides.Add(newOverride);
+		} else {
+			// Override exists, toggle its state
+			existingOverride.IsEnabled = !existingOverride.IsEnabled;
+			m_context.FactoryRecipeInputOverrides.Update(existingOverride);
+		}
+
+		await m_context.SaveChangesAsync();
+	}
+
+	/// <summary>
+	/// Toggle whether a recipe output is enabled/disabled for balance calculations
+	/// </summary>
+	public async Task ToggleRecipeOutputAsync(int factoryRecipeId, int recipeOutputId) {
+		var existingOverride = await m_context.FactoryRecipeOutputOverrides
+			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeOutputId == recipeOutputId);
+
+		if (existingOverride == null) {
+			// No override exists, so output is currently enabled - create disabled override
+			var newOverride = new FactoryRecipeOutputOverride {
+				FactoryRecipeId = factoryRecipeId,
+				RecipeOutputId = recipeOutputId,
+				IsEnabled = false
+			};
+			m_context.FactoryRecipeOutputOverrides.Add(newOverride);
+		} else {
+			// Override exists, toggle its state
+			existingOverride.IsEnabled = !existingOverride.IsEnabled;
+			m_context.FactoryRecipeOutputOverrides.Update(existingOverride);
+		}
+
+		await m_context.SaveChangesAsync();
+	}
+
+	/// <summary>
+	/// Check if a recipe input is enabled for balance calculations
+	/// </summary>
+	public bool IsRecipeInputEnabled(FactoryRecipe factoryRecipe, int recipeInputId) {
+		var override_ = factoryRecipe.InputOverrides
+			.FirstOrDefault(o => o.RecipeInputId == recipeInputId);
+		return override_?.IsEnabled ?? true; // Default to enabled if no override exists
+	}
+
+	/// <summary>
+	/// Check if a recipe output is enabled for balance calculations
+	/// </summary>
+	public bool IsRecipeOutputEnabled(FactoryRecipe factoryRecipe, int recipeOutputId) {
+		var override_ = factoryRecipe.OutputOverrides
+			.FirstOrDefault(o => o.RecipeOutputId == recipeOutputId);
+		return override_?.IsEnabled ?? true; // Default to enabled if no override exists
 	}
 }

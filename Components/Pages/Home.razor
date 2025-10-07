@@ -19,44 +19,6 @@
 	</div>
 </div>
 
-<div class="container-fluid mt-3">
-	<div class="row">
-		<div class="col">
-			@foreach  (var recipe in FactoryService.GetAllRecipes())
-			{
-				// Print name and batch time of each recipe
-				<p>@recipe.Name - Batch Time: @recipe.TimeSeconds seconds</p>
-
-				// Add Input and Output details
-				<ul>
-					<li>Inputs:
-						<ul>
-							@foreach (var input in recipe.Inputs)
-							{
-								<li>
-									<img src="@input.Part.ImageUrl" alt="@input.Part.Name" style="width:24px; height:24px; margin-right:8px;" />
-									@input.Part.Name: @input.Quantity
-								</li>
-							}
-						</ul>
-					</li>
-					<li>Outputs:
-						<ul>
-							@foreach (var output in recipe.Outputs)
-							{
-								<li>
-									<img src="@output.Part.ImageUrl" alt="@output.Part.Name" style="width:24px; height:24px; margin-right:8px;" />
-									@output.Part.Name: @output.Quantity
-								</li>
-							}
-						</ul>
-					</li>
-				</ul>
-			}
-		</div>
-	</div>
-</div>
-
 @code {
 	private ResourceBalance resourceBalanceComponent = default!;
 	private FactoryManager factoryManagerComponent = default!;

@@ -4,6 +4,12 @@ using SFTracker.Components;
 using SFTracker.Data;
 using SFTracker.Services;
 
+
+
+// DEBUG - delete existing database
+// File.Delete("Database/sftracker.db");
+
+
 // If Database folder does not exist, create it
 var dbFolder = "Database";
 if (!Directory.Exists(dbFolder)) {
@@ -28,8 +34,11 @@ builder.Services.AddBootstrapSelect(defaults => {
 });
 
 // Add Entity Framework
-builder.Services.AddDbContext<SFTrackerDbContext>(options =>
-	options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=Database/sftracker.db"));
+builder.Services.AddDbContext<SFTrackerDbContext>((options) => {
+	options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+	options.EnableDetailedErrors();
+	options.EnableSensitiveDataLogging();
+});
 
 // Add services
 builder.Services.AddSingleton<GameInfoService>();
@@ -57,6 +66,7 @@ await context.Database.EnsureCreatedAsync();
 // Import parts if needed
 var dataImportService = services.GetRequiredService<DataImportService>();
 await dataImportService.ImportPartsAsync();
+await dataImportService.ImportRecipesAsync();
 
 app.UseAntiforgery();
 app.MapStaticAssets();

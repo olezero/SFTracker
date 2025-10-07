@@ -74,7 +74,107 @@
 					</div>
 				</div>
 				<div class="card-body">
+					<!-- Recipes Section -->
 					<div class="row">
+						<div class="col-12 mb-4">
+						<h6 class="text-center">Recipes</h6>
+						@if (selectedFactory.Recipes.Any())
+						{
+							@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Recipe.Name))
+							{
+								<div class="p-3 mb-3">
+									<div class="d-flex justify-content-between align-items-start mb-2">
+										<div class="d-flex align-items-center">
+											<h6 class="mb-0 me-2">@factoryRecipe.Recipe.Name</h6>
+											@if (editingRecipeId == factoryRecipe.Id)
+											{
+												<div class="d-flex align-items-center">
+													<span class="me-2">Multiplier:</span>
+													<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
+														   style="width: 100px;" step="0.1" min="0.1">
+													<button class="btn btn-sm btn-secondary me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+														<i class="bi bi-check"></i>
+													</button>
+													<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
+														<i class="bi bi-x"></i>
+													</button>
+												</div>
+											}
+											else
+											{
+												<span class="badge bg-secondary me-2">@factoryRecipe.Multiplier x</span>
+												<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
+													<i class="bi bi-pencil"></i>
+												</button>
+												<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
+													<i class="bi bi-trash"></i>
+												</button>
+											}
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-6">
+											<small class="text-muted">Inputs:</small>
+											@foreach (var input in factoryRecipe.Recipe.Inputs)
+											{
+												<div class="d-flex align-items-center small mb-1">
+													<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-1"
+														 style="width: 16px; height: 16px; object-fit: contain;" onerror="this.style.display='none'">
+													<span class="me-1">@input.Part.Name</span>
+													<span class="badge bg-secondary">@((input.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+												</div>
+											}
+										</div>
+										<div class="col-6">
+											<small class="text-muted">Outputs:</small>
+											@foreach (var output in factoryRecipe.Recipe.Outputs)
+											{
+												<div class="d-flex align-items-center small mb-1">
+													<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-1"
+														 style="width: 16px; height: 16px; object-fit: contain;" onerror="this.style.display='none'">
+													<span class="me-1">@output.Part.Name</span>
+													<span class="badge bg-secondary">@((output.Quantity * factoryRecipe.Multiplier).ToString("F1"))/min</span>
+												</div>
+											}
+										</div>
+									</div>
+								</div>
+							}
+						} else {
+							<p class="text-muted">No recipes assigned to this factory. Add a recipe below.</p>
+						}
+
+						<hr />
+						<!-- Add Recipe Form -->
+							<div class="row g-2 align-items-end">
+								<div class="col-6">
+									<label class="form-label small">Recipe</label>
+									<select class="form-select" @bind="newRecipeId">
+										<option value="">Select a recipe...</option>
+										@foreach (var recipe in allRecipes)
+										{
+											<option value="@recipe.Id">@recipe.Name</option>
+										}
+									</select>
+								</div>
+								<div class="col-3">
+									<label class="form-label small">Multiplier</label>
+									<input type="number" class="form-control" @bind="newRecipeMultiplier"
+										   placeholder="1.0" step="0.1" min="0.1">
+								</div>
+								<div class="col-3">
+									<button class="btn btn-secondary w-100" @onclick="AddRecipe">Add Recipe</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<hr />
+
+					<!-- Inputs and Outputs Section -->
+					<div class="row">
+						<h6 class="text-center">Custom Inputs and Outputs</h6>
 						<div class="col-md-6">
 							<h6>Inputs</h6>
 							@if (selectedFactory.Inputs.Any())
@@ -234,10 +334,9 @@
 </Modal>
 
 @code {
-    private ResourceBalance? ResourceBalanceComponent { get; set; }
-
-    private List<Factory> factories = new();
+    private ResourceBalance? ResourceBalanceComponent { get; set; }    private List<Factory> factories = new();
     private List<DbPart> allParts = new();
+    private List<DbRecipe> allRecipes = new();
     private Factory? selectedFactory;
     private Modal createFactoryModal = default!;
 	private Modal updateFactoryModal = default!;
@@ -251,6 +350,10 @@
     private DbPart? newOutputPart;
     private double newOutputAmount = 0;
 
+    // Recipe form fields
+    private int? newRecipeId;
+    private decimal newRecipeMultiplier = 1.0m;
+
     // Edit mode fields for inputs
     private int? editingInputId = null;
     private DbPart? editingInputPart;
@@ -260,6 +363,10 @@
     private int? editingOutputId = null;
     private DbPart? editingOutputPart;
     private double editingOutputAmount = 0;
+
+    // Edit mode fields for recipes
+    private int? editingRecipeId = null;
+    private decimal editingRecipeMultiplier = 0;
 
 	public List<Factory> SortedFactories => factories.OrderBy(f => f.Sorting).ToList();
 
@@ -272,12 +379,11 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
-    }
-
-    private async Task LoadData()
+    }    private async Task LoadData()
     {
         factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
         allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
+        allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
 
         // Refresh selected factory if it exists
         if (selectedFactory != null)
@@ -366,10 +472,56 @@
         editingOutputAmount = 0;
     }
 
+    private void StartEditRecipe(FactoryRecipe factoryRecipe)
+    {
+        CancelAllEdits();
+        editingRecipeId = factoryRecipe.Id;
+        editingRecipeMultiplier = factoryRecipe.Multiplier;
+    }
+
+    private async Task SaveRecipeEdit(int factoryRecipeId)
+    {
+        if (editingRecipeMultiplier > 0)
+        {
+            await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier);
+            await LoadDataAndRefreshBalance();
+            CancelRecipeEdit();
+        }
+    }
+
+    private void CancelRecipeEdit()
+    {
+        editingRecipeId = null;
+        editingRecipeMultiplier = 0;
+    }
+
+    private async Task AddRecipe()
+    {
+        if (selectedFactory != null && newRecipeId.HasValue && newRecipeMultiplier > 0)
+        {
+            await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, newRecipeId.Value, newRecipeMultiplier);
+            await LoadDataAndRefreshBalance();
+            ResetRecipeForm();
+        }
+    }
+
+    private async Task RemoveRecipe(int factoryRecipeId)
+    {
+        await FactoryService.RemoveFactoryRecipeAsync(factoryRecipeId);
+        await LoadDataAndRefreshBalance();
+    }
+
+    private void ResetRecipeForm()
+    {
+        newRecipeId = null;
+        newRecipeMultiplier = 1.0m;
+    }
+
     private void CancelAllEdits()
     {
         CancelInputEdit();
         CancelOutputEdit();
+        CancelRecipeEdit();
     }
 
     private void ShowCreateFactoryModal()
@@ -465,14 +617,13 @@
     {
         await FactoryService.RemoveFactoryOutputAsync(outputId);
         await LoadDataAndRefreshBalance();
-    }
-
-    private void ResetInputOutputForms()
+    }    private void ResetInputOutputForms()
     {
         newInputPart = null;
         newInputAmount = 0;
         newOutputPart = null;
         newOutputAmount = 0;
+        ResetRecipeForm();
     }
 
     public void Dispose()

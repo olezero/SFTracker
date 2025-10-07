@@ -19,6 +19,14 @@ public class FactoryService {
 			.Include(f => f.Outputs)
 				.ThenInclude(o => o.Part)
 				.OrderBy(i => i.Name)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.Recipe)
+				.ThenInclude(r => r.Inputs)
+				.ThenInclude(ri => ri.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.Recipe)
+				.ThenInclude(r => r.Outputs)
+				.ThenInclude(ro => ro.Part)
 			.OrderBy(f => f.Sorting)
 			.AsSplitQuery()
 			.ToListAsync();
@@ -32,6 +40,14 @@ public class FactoryService {
 			.Include(f => f.Outputs)
 				.ThenInclude(o => o.Part)
 				.OrderBy(o => o.Name)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.Recipe)
+				.ThenInclude(r => r.Inputs)
+				.ThenInclude(ri => ri.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive))
+				.ThenInclude(r => r.Recipe)
+				.ThenInclude(r => r.Outputs)
+				.ThenInclude(ro => ro.Part)
 			.AsSplitQuery()
 			.FirstOrDefaultAsync(f => f.Id == id);
 	}
@@ -94,6 +110,34 @@ public class FactoryService {
 		}
 	}
 
+	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, decimal multiplier) {
+		var factoryRecipe = new FactoryRecipe {
+			FactoryId = factoryId,
+			RecipeId = recipeId,
+			Multiplier = multiplier,
+			IsActive = true
+		};
+		m_context.FactoryRecipes.Add(factoryRecipe);
+		await m_context.SaveChangesAsync();
+	}
+
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, decimal multiplier) {
+		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
+		if (factoryRecipe != null) {
+			factoryRecipe.Multiplier = multiplier;
+			m_context.FactoryRecipes.Update(factoryRecipe);
+			await m_context.SaveChangesAsync();
+		}
+	}
+
+	public async Task RemoveFactoryRecipeAsync(int factoryRecipeId) {
+		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
+		if (factoryRecipe != null) {
+			m_context.FactoryRecipes.Remove(factoryRecipe);
+			await m_context.SaveChangesAsync();
+		}
+	}
+
 	/// <summary>
 	/// Calculate the global resource surplus/deficit for all parts
 	/// </summary>
@@ -128,7 +172,28 @@ public class FactoryService {
 
 	public async Task<List<DbPart>> GetAllPartsAsync() {
 		return await m_context.Parts
+			.Where(p => !p.Name.Contains("FICSMAS"))
 			.OrderBy(p => p.Name)
+			.ToListAsync();
+	}
+
+	public List<DbRecipe> GetAllRecipes() {
+		return GetAllRecipesAsync().GetAwaiter().GetResult();
+	}
+
+	// TODO - this should only returnt he recipe, need a seperate method to get recipe details methinks - or we could just cache the result
+	public async Task<List<DbRecipe>> GetAllRecipesAsync() {
+		return await m_context.Recipes
+			.Where(n => !n.Name.Contains("FICSMAS"))
+
+			.Include(r => r.Inputs)
+			.ThenInclude(rp => rp.Part)
+
+			.Include(r => r.Outputs)
+			.ThenInclude(rp => rp.Part)
+
+			.OrderBy(r => r.Name)
+			.AsSplitQuery()
 			.ToListAsync();
 	}
 }

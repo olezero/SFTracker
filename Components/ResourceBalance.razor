@@ -1,0 +1,238 @@
+@using SFTracker.Services
+@using SFTracker.Models
+@inject FactoryService FactoryService
+@implements IDisposable
+
+
+<div class="card h-100">
+	<div class="card-header d-flex justify-content-between align-items-center">
+		<h5 class="mb-0">Resource Balance</h5>
+		<button class="btn btn-outline-primary btn-sm" @onclick="RefreshBalance">
+			<i class="bi bi-arrow-clockwise"></i>
+		</button>
+	</div>
+	<div class="card-body p-0">
+		@if (isLoading)
+		{
+			<div class="text-center p-3">
+				<div class="spinner-border spinner-border-sm" role="status">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<div class="mt-2">Calculating...</div>
+			</div>
+		}
+		else if (partBalances.Any())
+		{
+			<div class="row m-1">
+				<div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+					<table class="table table-dark table-sm table-hover mb-0">
+						<thead class="sticky-top">
+							<tr>
+								<th style="width: 40%;">Part</th>
+								<th style="width: 20%;" class="text-end">Consumption</th>
+								<th style="width: 20%;" class="text-end">Production</th>
+								<th style="width: 20%;" class="text-end">Balance</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var part in partBalances.OrderByDescending(p => p.Balance).ThenBy(p =>
+													p.PartName))
+							{
+								<tr>
+									<td>
+										<div class="d-flex align-items-center">
+											<img src="@part.ImageUrl" alt="@part.PartName" class="me-2"
+												style="width: 20px; height: 20px; object-fit: contain;"
+												onerror="this.style.display='none'">
+											<span class="text-truncate" title="@part.PartName">@part.PartName</span>
+										</div>
+									</td>
+									<td class="text-end">
+										@if (part.Consumption > 0)
+										{
+											<span class="text-primary">@part.Consumption.ToString("F1")</span>
+										}
+										else
+										{
+											<span class="text-muted">-</span>
+										}
+									</td>
+									<td class="text-end">
+										@if (part.Production > 0)
+										{
+											<span class="text-info">@part.Production.ToString("F1")</span>
+										}
+										else
+										{
+											<span class="text-muted">-</span>
+										}
+									</td>
+									<td class="text-end">
+										@if (Math.Abs(part.Balance) < 0.01)
+										{
+											<span class="text-secondary fw-bold">0.0</span>
+										}
+										else if (part.Balance > 0)
+										{
+											<span class="text-success fw-bold">+@part.Balance.ToString("F1")</span>
+										}
+										else
+										{
+											<span class="text-danger fw-bold">@part.Balance.ToString("F1")</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Summary footer -->
+			<div class="card-footer bg-dark p-2">
+				<div class="row text-center">
+					<div class="col-4">
+						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance > 0.01)</small>
+						<div><small class="text-muted">Surplus</small></div>
+					</div>
+					<div class="col-4">
+						<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance < -0.01)</small>
+						<div><small class="text-muted">Deficit</small></div>
+					</div>
+					<div class="col-4">
+						<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <=
+													0.01)</small>
+					<div><small class="text-muted">Balanced</small></div>
+				</div>
+			</div>
+		</div>
+				}
+		else
+		{
+			<div class="text-center text-muted p-3">
+				<i class="bi bi-info-circle-fill mb-2 d-block" style="font-size: 2rem;"></i>
+				<p class="mb-0">No factories configured</p>
+				<small>Create factories to see resource balance</small>
+			</div>
+		}
+	</div>
+</div>
+
+
+@code {
+	private List<PartBalance> partBalances = new();
+	private bool isLoading = true;
+	private CancellationTokenSource? _debounceTokenSource;
+
+	public class PartBalance
+	{
+		public string PartName { get; set; } = "";
+		public string ImageUrl { get; set; } = "";
+		public double Consumption { get; set; }
+		public double Production { get; set; }
+		public double Balance => Production - Consumption;
+		public string Tier { get; set; } = "";
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		await RefreshBalance();
+	}
+
+	public async Task RefreshBalance()
+	{
+		isLoading = true;
+		StateHasChanged();
+
+		try
+		{
+			await LoadPartBalances();
+		}
+		finally
+		{
+			isLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task LoadPartBalances()
+	{
+		var factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		var allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
+
+		// Get all parts that are used in any factory (inputs or outputs)
+		var usedPartIds = new HashSet<int>();
+
+		foreach (var factory in factories)
+		{
+			foreach (var input in factory.Inputs)
+				usedPartIds.Add(input.PartId);
+			foreach (var output in factory.Outputs)
+				usedPartIds.Add(output.PartId);
+		}
+
+		partBalances = new List<PartBalance>();
+
+		foreach (var partId in usedPartIds)
+		{
+			var part = allParts.FirstOrDefault(p => p.Id == partId);
+			if (part == null) continue;
+
+			var consumption = factories.SelectMany(f => f.Inputs)
+			.Where(i => i.PartId == partId)
+			.Sum(i => i.AmountPerMinute);
+
+			var production = factories.SelectMany(f => f.Outputs)
+			.Where(o => o.PartId == partId)
+			.Sum(o => o.AmountPerMinute);
+
+			partBalances.Add(new PartBalance
+			{
+				PartName = part.Name,
+				ImageUrl = part.ImageUrl ?? "",
+				Consumption = consumption,
+				Production = production,
+				Tier = part.Tier ?? ""
+			});
+		}
+	}
+
+	public async Task RefreshBalanceDebounced(int delayMs = 100)
+	{
+		// Cancel any existing debounce operation
+		_debounceTokenSource?.Cancel();
+		_debounceTokenSource?.Dispose();
+		_debounceTokenSource = new CancellationTokenSource();
+
+		try
+		{
+			// Remove the delay since you commented it out, just refresh immediately
+			await RefreshBalance();
+		}
+		catch (TaskCanceledException)
+		{
+			// Task was cancelled, which is expected when debouncing
+		}
+		catch (ObjectDisposedException)
+		{
+			// Component was disposed, ignore
+		}
+	}
+
+	public void Dispose()
+	{
+		try
+		{
+			_debounceTokenSource?.Cancel();
+			_debounceTokenSource?.Dispose();
+		}
+		catch (ObjectDisposedException)
+		{
+			// Already disposed, ignore
+		}
+		finally
+		{
+			_debounceTokenSource = null;
+		}
+	}
+}

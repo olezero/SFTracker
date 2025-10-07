@@ -1,0 +1,32 @@
+@using SFTracker.Models
+
+<select class="form-select @CssClass" @bind="SelectedPartId" @bind:after="OnPartChanged">
+	<option value="">@Placeholder</option>
+	@foreach (var part in Parts.OrderBy(p => p.Name))
+	{
+		<option value="@part.Id">@part.Name</option>
+	}
+</select>
+
+@code {
+	[Parameter] public List<DbPart> Parts { get; set; } = new();
+	[Parameter] public DbPart? SelectedPart { get; set; }
+	[Parameter] public EventCallback<DbPart> SelectedPartChanged { get; set; }
+	[Parameter] public string Placeholder { get; set; } = "Select a part...";
+	[Parameter] public string CssClass { get; set; } = "";
+
+	private int? SelectedPartId
+	{
+		get => SelectedPart?.Id;
+		set
+		{
+			var part = value.HasValue ? Parts.FirstOrDefault(p => p.Id == value.Value) : null;
+			SelectedPart = part;
+		}
+	}
+
+	private async Task OnPartChanged()
+	{
+		await SelectedPartChanged.InvokeAsync(SelectedPart);
+	}
+}

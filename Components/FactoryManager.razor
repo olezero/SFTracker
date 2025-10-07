@@ -1,0 +1,515 @@
+@using SFTracker.Models
+@using SFTracker.Services
+@inject FactoryService FactoryService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<style>
+    .sortable-factory-item {
+        cursor: pointer;
+    }
+
+    /* Target the parent list-group-item when the child has the selected class */
+    .list-group-item:has(.sortable-factory-item.selected) {
+        background-color: var(--bs-primary) !important;
+        color: white !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    /* Alternative approach using data attributes if :has() isn't supported */
+    .list-group-item[data-selected="True"] {
+        background-color: var(--bs-primary) !important;
+        color: white !important;
+        border-color: var(--bs-primary) !important;
+    }
+</style>
+
+<div class="row">
+	<div class="col-md-4">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">Factories</h5>
+				<button class="btn btn-secondary btn-sm" @onclick="ShowCreateFactoryModal">
+					<i class="bi bi-plus"></i> Add Factory
+				</button>
+			</div>
+			<div class="card-body">
+				@if (factories.Any())
+				{
+					@* <div class="list-group">
+						@foreach (var factory in factories.OrderBy(f => f.Sorting))
+						{
+							<a href="#" class="list-group-item list-group-item-action @(selectedFactory?.Id == factory.Id ? "active" : "")"
+								@onclick="() => SelectFactory(factory)"
+								@onclick:preventDefault="true">
+								<div class="d-flex w-100 justify-content-between">
+									<h6 class="mb-1">@factory.Name</h6>
+									<small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small>
+								</div>
+							</a>
+						}
+					</div> *@
+
+
+				<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
+					<ItemTemplate>
+						<div class="d-flex w-100 justify-content-between sortable-factory-item @(selectedFactory?.Id == factory.Id ? "selected" : "")"
+							@onclick="() => SelectFactory(factory)"
+							data-factory-id="@factory.Id"
+							data-selected="@(selectedFactory?.Id == factory.Id)">
+							<h6 class="mb-1">@factory.Name</h6>
+							<small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small>
+						</div>
+					</ItemTemplate>
+				</SortableList>
+				}
+				else
+				{
+					<p class="text-muted">No factories yet. Create your first factory!</p>
+				}
+			</div>
+
+
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		@if (selectedFactory != null)
+		{
+			<div class="card">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<h5 class="mb-0">@selectedFactory.Name</h5>
+					<div>
+						<button class="btn btn-secondary btn-sm me-2" @onclick="ShowUpdateFactoryModal">
+							<i class="bi bi-pencil"></i> Edit
+						</button>
+						<button class="btn btn-secondary btn-sm" @onclick="DeleteSelectedFactory">
+							<i class="bi bi-trash"></i> Delete
+						</button>
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="row">
+						<div class="col-md-6">
+							<h6>Inputs</h6>
+							@if (selectedFactory.Inputs.Any())
+							{
+								@foreach (var input in selectedFactory.Inputs.OrderBy(i => i.Part.Name))
+								{
+									<div class="d-flex align-items-center mb-2">
+										@if (editingInputId == input.Id)
+										{
+											<!-- Edit mode -->
+											<img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<div class="flex-grow-1 me-2">
+												<PartSelector Parts="@allParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..." CssClass="form-select-sm" />
+											</div>
+											<div class="me-2" style="width: 100px;">
+												<input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1" min="0.1">
+											</div>
+											<button class="btn btn-sm btn-secondary me-1" @onclick="() => SaveInputEdit(input.Id)">
+												<i class="bi bi-check"></i>
+											</button>
+											<button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
+												<i class="bi bi-x"></i>
+											</button>
+										}
+										else
+										{
+											<!-- View mode -->
+											<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<span class="me-2 flex-grow-1">@input.Part.Name</span>
+											<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
+									</div>
+								}
+							}
+							<div class="mt-3">
+								<div class="row g-2">
+									<div class="col-6">
+										<PartSelector Parts="@allParts" @bind-SelectedPart="newInputPart" Placeholder="Select input part..." />
+									</div>
+									<div class="col-3">
+										<input type="number" class="form-control" @bind="newInputAmount" placeholder="Amount/min" step="0.1" min="0.1">
+									</div>
+									<div class="col-3">
+										<button class="btn btn-secondary w-100" @onclick="AddInput">Add</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<h6>Outputs</h6>
+							@if (selectedFactory.Outputs.Any())
+							{
+								@foreach (var output in selectedFactory.Outputs.OrderBy(o => o.Part.Name))
+								{
+									<div class="d-flex align-items-center mb-2">
+										@if (editingOutputId == output.Id)
+										{
+											<!-- Edit mode -->
+											<img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<div class="flex-grow-1 me-2">
+												<PartSelector Parts="@allParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..." CssClass="form-select-sm" />
+											</div>
+											<div class="me-2" style="width: 100px;">
+												<input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1" min="0.1">
+											</div>
+											<button class="btn btn-sm btn-secondary me-1" @onclick="() => SaveOutputEdit(output.Id)">
+												<i class="bi bi-check"></i>
+											</button>
+											<button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
+												<i class="bi bi-x"></i>
+											</button>
+										}
+										else
+										{
+											<!-- View mode -->
+											<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+											<span class="me-2 flex-grow-1">@output.Part.Name</span>
+											<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
+												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
+												<i class="bi bi-trash"></i>
+											</button>
+										}
+									</div>
+								}
+							}
+							<div class="mt-3">
+								<div class="row g-2">
+									<div class="col-6">
+										<PartSelector Parts="@allParts" @bind-SelectedPart="newOutputPart" Placeholder="Select output part..." />
+									</div>
+									<div class="col-3">
+										<input type="number" class="form-control" @bind="newOutputAmount" placeholder="Amount/min" step="0.1" min="0.1">
+									</div>
+									<div class="col-3">
+										<button class="btn btn-secondary w-100" @onclick="AddOutput">Add</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+		else
+		{
+			<div class="card">
+				<div class="card-body text-center text-muted">
+					<h5>Select a factory to view details</h5>
+					<p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>
+				</div>
+			</div>
+		}
+	</div>
+</div>
+
+<!-- Create Factory Modal -->
+<Modal @ref="createFactoryModal" Title="Create New Factory">
+    <BodyTemplate>
+        <div class="mb-3">
+            <label for="factoryName" class="form-label">Factory Name</label>
+            <input type="text" class="form-control" id="factoryName" @bind="newFactoryName" placeholder="Enter factory name">
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideCreateFactoryModal">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="CreateFactory">Create Factory</Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- Edit Factory Modal -->
+<Modal @ref="updateFactoryModal" Title="Edit Factory">
+	<BodyTemplate>
+		@if (selectedFactory == null)
+		{
+			<p class="text-danger">Error: No factory selected.</p>
+			return;
+		}
+		<div class="mb-3">
+			<label for="factoryNameEdit" class="form-label">Factory Name</label>
+			<input type="text" class="form-control" id="factoryNameEdit" @bind="newFactoryName" placeholder="Enter factory name">
+		</div>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideUpdateFactoryModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="UpdateFactory">Save Changes</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+    private ResourceBalance? ResourceBalanceComponent { get; set; }
+
+    private List<Factory> factories = new();
+    private List<DbPart> allParts = new();
+    private Factory? selectedFactory;
+    private Modal createFactoryModal = default!;
+	private Modal updateFactoryModal = default!;
+    private string newFactoryName = "";
+
+    // Input form fields
+    private DbPart? newInputPart;
+    private double newInputAmount = 0;
+
+    // Output form fields
+    private DbPart? newOutputPart;
+    private double newOutputAmount = 0;
+
+    // Edit mode fields for inputs
+    private int? editingInputId = null;
+    private DbPart? editingInputPart;
+    private double editingInputAmount = 0;
+
+    // Edit mode fields for outputs
+    private int? editingOutputId = null;
+    private DbPart? editingOutputPart;
+    private double editingOutputAmount = 0;
+
+	public List<Factory> SortedFactories => factories.OrderBy(f => f.Sorting).ToList();
+
+    public void SetResourceBalanceComponent(ResourceBalance component)
+    {
+        ResourceBalanceComponent = component;
+        Console.WriteLine($"ResourceBalanceComponent set in FactoryManager: {component != null}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+        allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
+
+        // Refresh selected factory if it exists
+        if (selectedFactory != null)
+        {
+            selectedFactory = await FactoryService.GetFactoryByIdAsync(selectedFactory.Id).ConfigureAwait(false);
+        }
+    }
+
+    private async Task LoadDataAndRefreshBalance()
+    {
+        await LoadData();
+        await TriggerBalanceRefresh();
+    }
+
+    private async Task TriggerBalanceRefresh()
+    {
+		Console.WriteLine($"Triggering balance refresh from FactoryManager. Component is null: {ResourceBalanceComponent == null}");
+        if (ResourceBalanceComponent != null)
+        {
+            await ResourceBalanceComponent.RefreshBalanceDebounced();
+        } else {
+			Console.WriteLine("ResourceBalanceComponent is null - cannot refresh balance.");
+		}
+    }
+
+    private void SelectFactory(Factory factory)
+    {
+        selectedFactory = factory;
+        ResetInputOutputForms();
+        CancelAllEdits();
+    }
+
+    private void StartEditInput(FactoryInput input)
+    {
+        CancelAllEdits();
+        editingInputId = input.Id;
+        editingInputPart = input.Part;
+        editingInputAmount = input.AmountPerMinute;
+    }
+
+    private void StartEditOutput(FactoryOutput output)
+    {
+        CancelAllEdits();
+        editingOutputId = output.Id;
+        editingOutputPart = output.Part;
+        editingOutputAmount = output.AmountPerMinute;
+    }
+
+    private async Task SaveInputEdit(int inputId)
+    {
+        if (editingInputPart != null && editingInputAmount > 0)
+        {
+            // Remove the old input
+            await FactoryService.RemoveFactoryInputAsync(inputId);
+            // Add the new input with updated values
+            await FactoryService.AddFactoryInputAsync(selectedFactory!.Id, editingInputPart.Id, editingInputAmount);
+            await LoadDataAndRefreshBalance();
+            CancelInputEdit();
+        }
+    }
+
+    private async Task SaveOutputEdit(int outputId)
+    {
+        if (editingOutputPart != null && editingOutputAmount > 0)
+        {
+            // Remove the old output
+            await FactoryService.RemoveFactoryOutputAsync(outputId);
+            // Add the new output with updated values
+            await FactoryService.AddFactoryOutputAsync(selectedFactory!.Id, editingOutputPart.Id, editingOutputAmount);
+            await LoadDataAndRefreshBalance();
+            CancelOutputEdit();
+        }
+    }
+
+    private void CancelInputEdit()
+    {
+        editingInputId = null;
+        editingInputPart = null;
+        editingInputAmount = 0;
+    }
+
+    private void CancelOutputEdit()
+    {
+        editingOutputId = null;
+        editingOutputPart = null;
+        editingOutputAmount = 0;
+    }
+
+    private void CancelAllEdits()
+    {
+        CancelInputEdit();
+        CancelOutputEdit();
+    }
+
+    private void ShowCreateFactoryModal()
+    {
+        newFactoryName = "";
+        createFactoryModal.ShowAsync();
+    }
+
+	private void ShowUpdateFactoryModal()
+	{
+		if (selectedFactory != null)
+		{
+			newFactoryName = selectedFactory.Name;
+			updateFactoryModal.ShowAsync();
+		}
+	}
+
+    private async Task HideCreateFactoryModal()
+    {
+        await createFactoryModal.HideAsync();
+		newFactoryName = "";
+    }
+
+	private async Task HideUpdateFactoryModal()
+	{
+		await updateFactoryModal.HideAsync();
+	}
+
+    private async Task CreateFactory()
+    {
+        if (!string.IsNullOrWhiteSpace(newFactoryName))
+        {
+            await FactoryService.CreateFactoryAsync(newFactoryName);
+            await HideCreateFactoryModal();
+            await LoadDataAndRefreshBalance();
+        }
+    }
+
+	private async Task UpdateFactory()
+	{
+		if (selectedFactory == null || string.IsNullOrWhiteSpace(newFactoryName))
+		{
+			return;
+		}
+		// Update the factory name
+		selectedFactory.Name = newFactoryName;
+		await FactoryService.UpdateFactoryAsync(selectedFactory);
+		await HideUpdateFactoryModal();
+		await LoadDataAndRefreshBalance();
+	}
+
+    private async Task DeleteSelectedFactory()
+    {
+        if (selectedFactory != null)
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{selectedFactory.Name}'?");
+            if (confirmed)
+            {
+                await FactoryService.DeleteFactoryAsync(selectedFactory.Id);
+                selectedFactory = null;
+                await LoadDataAndRefreshBalance();
+            }
+        }
+    }
+
+    private async Task AddInput()
+    {
+        if (selectedFactory != null && newInputPart != null && newInputAmount > 0)
+        {
+            await FactoryService.AddFactoryInputAsync(selectedFactory.Id, newInputPart.Id, newInputAmount);
+            await LoadDataAndRefreshBalance();
+            ResetInputOutputForms();
+        }
+    }
+
+    private async Task AddOutput()
+    {
+        if (selectedFactory != null && newOutputPart != null && newOutputAmount > 0)
+        {
+            await FactoryService.AddFactoryOutputAsync(selectedFactory.Id, newOutputPart.Id, newOutputAmount);
+            await LoadDataAndRefreshBalance();
+            ResetInputOutputForms();
+        }
+    }
+
+    private async Task RemoveInput(int inputId)
+    {
+        await FactoryService.RemoveFactoryInputAsync(inputId);
+        await LoadDataAndRefreshBalance();
+    }
+
+    private async Task RemoveOutput(int outputId)
+    {
+        await FactoryService.RemoveFactoryOutputAsync(outputId);
+        await LoadDataAndRefreshBalance();
+    }
+
+    private void ResetInputOutputForms()
+    {
+        newInputPart = null;
+        newInputAmount = 0;
+        newOutputPart = null;
+        newOutputAmount = 0;
+    }
+
+    public void Dispose()
+    {
+        // Clean up component references to prevent memory leaks
+        ResourceBalanceComponent = null;
+    }
+
+	private void OnFactoryListUpdate(SortableListEventArgs args) {
+		Console.WriteLine("Factory list updated via drag-and-drop.");
+		var itemToMove = factories[args.OldIndex];
+        factories.RemoveAt(args.OldIndex);
+        if (args.NewIndex < factories.Count) {
+            factories.Insert(args.NewIndex, itemToMove);
+		} else {
+            factories.Add(itemToMove);
+		}
+
+		// Update all sorting values on factories based on the current order
+		for (int i = 0; i < factories.Count; i++) {
+			factories[i].Sorting = i;
+			FactoryService.UpdateFactoryAsync(factories[i]); // Fire and forget
+		}
+	}
+}

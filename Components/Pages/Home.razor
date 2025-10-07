@@ -1,0 +1,69 @@
+﻿@rendermode InteractiveServer
+@using Blzr.BootstrapSelect
+@using System.ComponentModel
+@page "/"
+@implements IDisposable
+
+<PageTitle>Satisfactory Factory Tracker</PageTitle>
+
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-9">
+			<FactoryManager @ref="factoryManagerComponent" />
+		</div>
+		<div class="col-md-3">
+			<ResourceBalance @ref="resourceBalanceComponent" />
+		</div>
+	</div>
+</div>
+
+@code {
+	private ResourceBalance resourceBalanceComponent = default!;
+	private FactoryManager factoryManagerComponent = default!;
+	private CancellationTokenSource? _componentLifetimeTokenSource;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			_componentLifetimeTokenSource = new CancellationTokenSource();
+
+			// Add a small delay to ensure both components are fully initialized
+			try
+			{
+				await Task.Delay(100, _componentLifetimeTokenSource.Token);
+			}
+			catch (TaskCanceledException)
+			{
+				return; // Component is being disposed
+			}
+
+			// Ensure the factory manager has the correct reference to the resource balance component
+			if (factoryManagerComponent != null && resourceBalanceComponent != null)
+			{
+				Console.WriteLine("Setting ResourceBalanceComponent in FactoryManager from Home.razor");
+				factoryManagerComponent.SetResourceBalanceComponent(resourceBalanceComponent);
+				StateHasChanged();
+			}
+			else
+			{
+				Console.WriteLine($"Components not ready: FactoryManager={factoryManagerComponent != null}, ResourceBalance={resourceBalanceComponent != null}");
+			}
+		}
+		await base.OnAfterRenderAsync(firstRender);
+	}
+
+	public void Dispose()
+	{
+		// Cancel any ongoing operations
+		_componentLifetimeTokenSource?.Cancel();
+
+		// Clean up component references
+		resourceBalanceComponent?.Dispose();
+		factoryManagerComponent?.Dispose();
+
+		// Dispose cancellation token
+		_componentLifetimeTokenSource?.Dispose();
+		_componentLifetimeTokenSource = null;
+	}
+}

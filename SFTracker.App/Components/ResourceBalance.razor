@@ -184,7 +184,6 @@
 		if (selectedFactoryBacking != "all" && int.TryParse(selectedFactoryBacking, out var selectedFactoryId))
 		{
 			// Filter to the selected factory
-			@* factories = factories.Where(f => f.Id == selectedFactoryId).ToList(); *@
 			var factory = await FactoryService.GetFactoryByIdAsync(selectedFactoryId).ConfigureAwait(false);
 			if (factory != null)
 			{

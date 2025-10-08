@@ -1,5 +1,6 @@
 @using SFTracker.Services
 @using SFTracker.Models
+@using SFTracker.Constants
 @inject FactoryService FactoryService
 @implements IDisposable
 
@@ -48,26 +49,26 @@
 										</div>
 									</td>
 									<td>
-										<span class="text-info">@part.Production.ToString("F1")</span>
+										<span class="text-info">@part.Production.ToString(DisplayConstants.DecimalFormat)</span>
 									</td>
 									<td>
 										<i class="bi bi-arrow-right-short"></i>
 									</td>
 									<td class="text-end">
-										<span class="text-info">@part.Consumption.ToString("F1")</span>
+										<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
 									</td>
 									<td class="text-end">
-										@if (Math.Abs(part.Balance) < 0.01)
+										@if (Math.Abs(part.Balance) < DisplayConstants.BalanceThreshold)
 										{
 											<span class="text-secondary fw-bold">0.0</span>
 										}
 										else if (part.Balance > 0)
 										{
-											<span class="text-success fw-bold">+@part.Balance.ToString("F1")</span>
+											<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
 										}
 										else
 										{
-											<span class="text-danger fw-bold">@part.Balance.ToString("F1")</span>
+											<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
 										}
 									</td>
 								</tr>
@@ -81,16 +82,15 @@
 			<div class="card-footer bg-dark p-2">
 				<div class="row text-center">
 					<div class="col-4">
-						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance > 0.01)</small>
+						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance > DisplayConstants.BalanceThreshold)</small>
 						<div><small class="text-muted">Surplus</small></div>
 					</div>
 					<div class="col-4">
-						<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance < -0.01)</small>
+						<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance < -DisplayConstants.BalanceThreshold)</small>
 						<div><small class="text-muted">Deficit</small></div>
 					</div>
 					<div class="col-4">
-						<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <=
-													0.01)</small>
+						<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <= DisplayConstants.BalanceThreshold)</small>
 					<div><small class="text-muted">Balanced</small></div>
 				</div>
 			</div>
@@ -193,8 +193,7 @@
 				var override_ = fr.InputOverrides.FirstOrDefault(o => o.RecipeInputId == ri.Id);
 				return override_?.IsEnabled ?? true; // Default to enabled if no override
 			})
-			// .Select(ri => (double)(ri.Quantity * fr.Multiplier)))
-			.Select(ri => (double)(ri.GetQuantityPerMinute(fr.Multiplier))))
+			.Select(ri => ri.GetQuantityPerMinute(fr.Multiplier)))
 			.Sum();
 
 			// Calculate recipe production (recipe outputs) - only include enabled outputs
@@ -205,8 +204,7 @@
 				var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
 				return override_?.IsEnabled ?? true; // Default to enabled if no override
 			})
-			@* .Select(ro => (double)(ro.Quantity * fr.Multiplier))) *@
-			.Select(ro => (double)(ro.GetQuantityPerMinute(fr.Multiplier))))
+			.Select(ro => ro.GetQuantityPerMinute(fr.Multiplier)))
 			.Sum();
 
 			// Total consumption and production

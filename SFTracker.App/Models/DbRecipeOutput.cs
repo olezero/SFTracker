@@ -9,7 +9,7 @@ namespace SFTracker.Models;
 public class DbRecipeOutput {
 	[Key]
 	public int Id { get; set; }
-	public decimal Quantity { get; set; }
+	public double Quantity { get; set; }
 
 	public int RecipeId { get; set; }
 	public int PartId { get; set; }
@@ -20,6 +20,6 @@ public class DbRecipeOutput {
 	[ForeignKey(nameof(RecipeId))]
 	public DbRecipe Recipe { get; set; } = null!;
 
-	public decimal GetQuantityPerMinute(decimal multiplier, bool isSlooped = false) => Quantity * multiplier / Recipe.TimeSeconds * 60 * (isSlooped ? 2 : 1);
-	public decimal GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60;
+	public double GetQuantityPerMinute(double multiplier, bool isSlooped = false) => Quantity * multiplier / Recipe.TimeSeconds * 60 * (isSlooped ? 2 : 1);
+	public double GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60;
 }

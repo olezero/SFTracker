@@ -20,7 +20,7 @@ public class FactoryRecipe {
 
 	public int FactoryId { get; set; }
 	public int RecipeId { get; set; }
-	public decimal Multiplier { get; set; }
+	public double Multiplier { get; set; }
 	public bool IsActive { get; set; } = true;
 
 	[ForeignKey(nameof(FactoryId))]

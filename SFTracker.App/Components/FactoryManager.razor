@@ -1,5 +1,6 @@
 @using SFTracker.Models
 @using SFTracker.Services
+@using SFTracker.Constants
 @inject FactoryService FactoryService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -390,7 +391,7 @@
 
     // Recipe form fields
     private int? newRecipeId;
-    private decimal newRecipeMultiplier = 1.0m;
+    private double newRecipeMultiplier = 1.0;
 
     // Edit mode fields for inputs
     private int? editingInputId = null;
@@ -404,7 +405,7 @@
 
     // Edit mode fields for recipes
     private int? editingRecipeId = null;
-    private decimal editingRecipeMultiplier = 0;
+    private double editingRecipeMultiplier = 0;
 
 	public List<Factory> SortedFactories => factories.OrderBy(f => f.Sorting).ToList();
 
@@ -549,7 +550,7 @@
     private void ResetRecipeForm()
     {
         newRecipeId = null;
-        newRecipeMultiplier = 1.0m;
+        newRecipeMultiplier = 1.0;
     }
 
     private void CancelAllEdits()
@@ -714,7 +715,7 @@
 		// @input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min
 
 
-		if(factoryRecipe.Multiplier == 1.0M) {
+		if(factoryRecipe.Multiplier == 1.0) {
 			return $"{input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
 		} else {
 			return $"{input.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
@@ -722,7 +723,7 @@
 	}
 
 	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output) {
-		if(factoryRecipe.Multiplier == 1.0M) {
+		if(factoryRecipe.Multiplier == 1.0) {
 			return $"{output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
 		} else {
 			return $"{output.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";

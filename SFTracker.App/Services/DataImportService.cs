@@ -64,7 +64,7 @@ public class DataImportService {
 				var dbRecipe = new DbRecipe {
 					Name = recipe.Name,
 					Tier = recipe.Tier ?? string.Empty,
-					TimeSeconds = decimal.Parse(recipe.BatchTime),
+					TimeSeconds = double.Parse(recipe.BatchTime),
 					IsAlternate = recipe.Alternate ?? false
 				};
 
@@ -109,18 +109,18 @@ public class DataImportService {
 		Console.WriteLine("Recipes imported successfully.");
 	}
 
-	private decimal ParseFractions(string batchTime) {
+	private double ParseFractions(string batchTime) {
 		// Can be in 1/2 or 1/4 etc format, usually just a pure number
 		if (batchTime.Contains('/')) {
 			Console.WriteLine($"Parsing fractional batch time: {batchTime}");
 			var parts = batchTime.Split('/');
-			if (parts.Length == 2 && decimal.TryParse(parts[0], out var numerator) && decimal.TryParse(parts[1], out var denominator) && denominator != 0) {
+			if (parts.Length == 2 && double.TryParse(parts[0], out var numerator) && double.TryParse(parts[1], out var denominator) && denominator != 0) {
 				var parsedValue = numerator / denominator;
 				Console.WriteLine($"Parsed {batchTime} as {parsedValue}");
 				return parsedValue;
 			}
 			throw new FormatException($"Invalid batch time format: {batchTime}");
-		} else if (decimal.TryParse(batchTime, out var result)) {
+		} else if (double.TryParse(batchTime, out var result)) {
 			return result;
 		} else {
 			throw new FormatException($"Invalid batch time format: {batchTime}");

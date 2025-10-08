@@ -118,7 +118,7 @@ public class FactoryService {
 		}
 	}
 
-	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, decimal multiplier) {
+	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier) {
 		var factoryRecipe = new FactoryRecipe {
 			FactoryId = factoryId,
 			RecipeId = recipeId,
@@ -129,7 +129,7 @@ public class FactoryService {
 		await m_context.SaveChangesAsync();
 	}
 
-	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, decimal multiplier) {
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {
 			factoryRecipe.Multiplier = multiplier;

@@ -13,7 +13,7 @@ public class FactoryInput {
 	public int PartId { get; set; }
 	public int FactoryId { get; set; }
 
-	[Range(0.001, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
+	[Range(typeof(double), "0.001", "999999999", ErrorMessage = "Amount must be greater than 0")]
 	public double AmountPerMinute { get; set; }
 
 	[ForeignKey("PartId")]

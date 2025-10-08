@@ -4,19 +4,6 @@ using SFTracker.Components;
 using SFTracker.Data;
 using SFTracker.Services;
 
-
-
-// DEBUG - delete existing database
-// File.Delete("Database/sftracker.db");
-
-
-// If Database folder does not exist, create it
-var dbFolder = "Database";
-if (!Directory.Exists(dbFolder)) {
-	Directory.CreateDirectory(dbFolder);
-}
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

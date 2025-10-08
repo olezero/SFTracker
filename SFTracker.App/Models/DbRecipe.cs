@@ -16,8 +16,8 @@ public class DbRecipe {
 	[MaxLength(500)]
 	public string Tier { get; set; } = string.Empty;
 
-	[Range(0, double.MaxValue)]
-	public decimal TimeSeconds { get; set; }
+	[Range(typeof(double), "0", "999999999")]
+	public double TimeSeconds { get; set; }
 
 	public bool IsAlternate { get; set; } = false;
 

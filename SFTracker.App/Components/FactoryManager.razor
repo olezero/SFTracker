@@ -49,7 +49,29 @@
     </div>
 </div>
 
+<BootstrapSelect 
+	TItem="DbRecipe" 
+	Data="@allRecipes" 
+	TextField="@((r) => r.Name)" 
+	ValueField="@((r) => r.Id.ToString())" 
+	TType="string"></BootstrapSelect>
+
+ 
+ @*  https://demos.blazorbootstrap.com/form/autocomplete *@
+<AutoComplete 
+	TItem="DbPart"
+	PropertyName="Name"
+	DataProvider="PartDataProvider"
+	></AutoComplete>
+
 @code {
+	private async Task<AutoCompleteDataProviderResult<DbPart>> PartDataProvider(AutoCompleteDataProviderRequest<DbPart> request) {
+		return await Task.FromResult(new AutoCompleteDataProviderResult<DbPart>() {
+			Data = allParts.AsEnumerable(),
+			TotalCount = allParts.Count
+		});
+	}
+
     private ResourceBalance? ResourceBalanceComponent { get; set; }
     private FactoryList? factoryListComponent;
     

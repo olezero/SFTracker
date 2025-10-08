@@ -14,16 +14,37 @@ Add option to disable individual input/output on recipes from being included in 
 
 
 
+
+When creating a new factory, auto select that factory.
+
+
+
 Add recipe modal
 	Would like the option to input either a multiplier, or input one of the inputs or one of the outputs and have the rest be caclulated on the fly.
-
-
+	Would also be nice to be able to search for output rather then recipe name
 So "Add Recipe" button
 	Modal opens
 		Select recipe from dropdown
 			Model renders inputs and outputs as "input fields"
 			    if a field is changed, the rest are recalculated based on the recipe ratios
 		"Add Recipe" button to confirm and add to factory
+The edit recipe button should show the modal while the "multipler" badge should behave the way the edit button does now. So clicking the multipler badge should turn it into an input field to change the multipler directly.
+	Also - support hitting enter to confirm the change and escape to cancel the change when editing the multipler directly.
 
 
 
+
+Maybe add a small dropdown to each recipe to select the factory tier ?
+We have a multipler already, but adding a factory tier would just multiply with that again.
+
+
+Add a small dropdown to the resource balance so we can select a specific factory or all factories
+	Would be nice to be able to see the resource balance for a specific factory, or all factories combined.
+	Dropdown to select factory or "All Factories"
+	When "All Factories" is selected, show the total resource balance for all factories combined.
+	When a specific factory is selected, show the resource balance for that factory only.
+	This allows the tool to be useful when designing a single factory, or when managing multiple factories.
+	Should default to "All Factories"
+
+
+Add a "Auto calculate multipler" button on recipes? To calculate exactly how much of a given recipe is needed to satisfy the inputs of other parts of the factory

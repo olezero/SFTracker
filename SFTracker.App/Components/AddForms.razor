@@ -1,0 +1,170 @@
+@inject FactoryService FactoryService
+
+<!-- Add Forms Section -->
+<div class="row g-3">
+    <!-- Add Recipe Form -->
+    <div class="col-md-4">
+        <label class="form-label small">Add Recipe</label>
+        <div class="row g-2">
+            <div class="col-12">
+                <select class="form-select form-select-sm" @bind="newRecipeId">
+                    <option value="">Select a recipe...</option>
+                    @foreach (var recipe in AllRecipes)
+                    {
+                        <option value="@recipe.Id">@recipe.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 btn-group btn-group-sm" role="group">
+                <button class="btn btn-secondary btn-sm" @onclick="AddRecipe">Add</button>
+                <button class="btn btn-secondary btn-sm" @onclick="ShowAdvancedAddRecipeModal">Advance</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Input Form -->
+    <div class="col-md-4">
+        <label class="form-label small">Add Custom Input</label>
+        <div class="row g-2">
+            <div class="col-12">
+                <PartSelector Parts="@AllParts" @bind-SelectedPart="newInputPart" Placeholder="Select input part..." CssClass="form-select-sm" />
+            </div>
+            <div class="col-6">
+                <input type="number" class="form-control form-control-sm" @bind="newInputAmount" placeholder="Amount/min" step="0.1" min="0.1">
+            </div>
+            <div class="col-6">
+                <button class="btn btn-secondary btn-sm w-100" @onclick="AddInput">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Output Form -->
+    <div class="col-md-4">
+        <label class="form-label small">Add Custom Output</label>
+        <div class="row g-2">
+            <div class="col-12">
+                <PartSelector Parts="@AllParts" @bind-SelectedPart="newOutputPart" Placeholder="Select output part..." CssClass="form-select-sm" />
+            </div>
+            <div class="col-6">
+                <input type="number" class="form-control form-control-sm" @bind="newOutputAmount" placeholder="Amount/min" step="0.1" min="0.1">
+            </div>
+            <div class="col-6">
+                <button class="btn btn-secondary btn-sm w-100" @onclick="AddOutput">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Advanced Recipe Modal *@
+<RecipeEditorModal @ref="advancedRecipeModal"
+                   Recipes="AllRecipes"
+                   IsEditMode="false"
+                   SelectedRecipe="editModalSelectedRecipe"
+                   InitialMultiplier="1"
+                   FactoryRecipeId="null"
+                   OnSave="OnAdvancedRecipeAdd" />
+
+@code {
+    [Parameter] public Factory SelectedFactory { get; set; } = null!;
+    [Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
+    [Parameter] public List<DbPart> AllParts { get; set; } = new();
+    [Parameter] public EventCallback OnRecipeAdded { get; set; }
+    [Parameter] public EventCallback OnInputAdded { get; set; }
+    [Parameter] public EventCallback OnOutputAdded { get; set; }
+
+    // Input form fields
+    private DbPart? newInputPart;
+    private double newInputAmount = 0;
+
+    // Output form fields
+    private DbPart? newOutputPart;
+    private double newOutputAmount = 0;
+
+    // Recipe form fields
+    private int? newRecipeId;
+    private double newRecipeMultiplier = 1.0;
+
+    // Recipe modals
+    private RecipeEditorModal? advancedRecipeModal;
+    
+    // Edit modal state
+    private DbRecipe? editModalSelectedRecipe;
+
+    private async Task AddRecipe()
+    {
+        if (SelectedFactory != null && newRecipeId.HasValue && newRecipeMultiplier > 0)
+        {
+            await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, newRecipeId.Value, newRecipeMultiplier);
+            await OnRecipeAdded.InvokeAsync();
+            ResetRecipeForm();
+        }
+    }
+
+    private async Task AddInput()
+    {
+        if (SelectedFactory != null && newInputPart != null && newInputAmount > 0)
+        {
+            await FactoryService.AddFactoryInputAsync(SelectedFactory.Id, newInputPart.Id, newInputAmount);
+            await OnInputAdded.InvokeAsync();
+            ResetInputOutputForms();
+        }
+    }
+
+    private async Task AddOutput()
+    {
+        if (SelectedFactory != null && newOutputPart != null && newOutputAmount > 0)
+        {
+            await FactoryService.AddFactoryOutputAsync(SelectedFactory.Id, newOutputPart.Id, newOutputAmount);
+            await OnOutputAdded.InvokeAsync();
+            ResetInputOutputForms();
+        }
+    }
+
+    private void ResetRecipeForm()
+    {
+        newRecipeId = null;
+        newRecipeMultiplier = 1.0;
+    }
+
+    private void ResetInputOutputForms()
+    {
+        newInputPart = null;
+        newInputAmount = 0;
+        newOutputPart = null;
+        newOutputAmount = 0;
+        ResetRecipeForm();
+    }
+
+    public void ResetForms()
+    {
+        ResetInputOutputForms();
+    }
+
+    private async void ShowAdvancedAddRecipeModal()
+    {
+        if (advancedRecipeModal != null)
+        {
+            if (newRecipeId.HasValue)
+            {
+                // Pass in the selected recipe and multiplier
+                editModalSelectedRecipe = AllRecipes.FirstOrDefault(r => r.Id == newRecipeId.Value);
+                StateHasChanged();
+            }
+
+            await advancedRecipeModal.ShowModal();
+        }
+    }
+
+    private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
+    {
+        if (SelectedFactory != null)
+        {
+            await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, args.recipeId, args.multiplier);
+            // Clear new recipe id
+            newRecipeId = null;
+            editModalSelectedRecipe = null;
+            StateHasChanged();
+            await OnRecipeAdded.InvokeAsync();
+        }
+    }
+}

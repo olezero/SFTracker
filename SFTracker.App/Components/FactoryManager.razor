@@ -1,7 +1,6 @@
 @using SFTracker.Models
 @using SFTracker.Services
 @using SFTracker.Constants
-@using BlazorBootstrap.Components
 @inject FactoryService FactoryService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -27,425 +26,49 @@
 </style>
 
 <div class="row">
-	<div class="col-md-4">
-		<div class="card">
-			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="mb-0">Factories</h5>
-				<button class="btn btn-secondary btn-sm" @onclick="ShowCreateFactoryModal">
-					<i class="bi bi-plus"></i> Add Factory
-				</button>
-			</div>
-			<div class="card-body">
-				@if (factories.Any())
-				{
-				<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
-					<ItemTemplate>
-						<div class="d-flex w-100 justify-content-between sortable-factory-item @(selectedFactory?.Id == factory.Id ? "selected" : "")"
-							@onclick="() => SelectFactory(factory)"
-							data-factory-id="@factory.Id"
-							data-selected="@(selectedFactory?.Id == factory.Id)">
-							<h6 class="mb-1">@factory.Name</h6>
-							@* <small>@factory.Inputs.Count inputs, @factory.Outputs.Count outputs</small> *@
-							<small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
-						</div>
-					</ItemTemplate>
-				</SortableList>
-				}
-				else
-				{
-					<p class="text-muted">No factories yet. Create your first factory!</p>
-				}
-			</div>
+    <div class="col-md-4">
+        <FactoryList @ref="factoryListComponent"
+                     Factories="@factories" 
+                     SelectedFactory="@selectedFactory"
+                     SelectedFactoryChanged="@OnFactorySelected"
+                     OnFactoryListChanged="@OnFactoryListChanged"
+                     OnFactoryOperation="@OnFactoryOperation" />
+    </div>
 
-
-		</div>
-	</div>
-
-	<div class="col-md-8">
-		@if (selectedFactory != null)
-		{
-			<div class="card">
-				<div class="card-header d-flex justify-content-between align-items-center">
-					<h5 class="mb-0">@selectedFactory.Name</h5>
-					<div>
-						<button class="btn btn-secondary btn-sm me-2" @onclick="ShowUpdateFactoryModal">
-							<i class="bi bi-pencil"></i> Edit
-						</button>
-						<button class="btn btn-secondary btn-sm" @onclick="DeleteSelectedFactory">
-							<i class="bi bi-trash"></i> Delete
-						</button>
-					</div>
-				</div>
-				<div class="card-body">
-					<!-- Table Headers -->
-					<div class="row mb-3 border-bottom pb-2">
-						<div class="col-md-6">
-							<h5 class="mb-0 text-center">Inputs</h5>
-						</div>
-						<div class="col-md-6">
-							<h5 class="mb-0 text-center">Outputs</h5>
-						</div>
-					</div>
-
-					<!-- Recipe Sections -->
-					@foreach (var factoryRecipe in selectedFactory.Recipes.OrderBy(r => r.Id))
-					{
-						<div class="row mb-4 border-bottom pb-3">
-							<!-- Recipe Header -->
-							<div class="col-12 mb-3">
-								<div class="d-flex justify-content-between align-items-center">
-									<div class="d-flex align-items-center">
-										<i class="bi bi-diagram-3 text-light me-2"></i>
-										<strong>@factoryRecipe.Recipe.Name</strong>
-									</div>
-									<div class="d-flex align-items-center">
-										@if (editingRecipeId == factoryRecipe.Id)
-										{
-											<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-												   style="width: 80px;" step="0.1" min="0.1" />
-											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-												<i class="bi bi-check"></i>
-											</button>
-											<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
-												<i class="bi bi-x"></i>
-											</button>
-										}
-										else
-										{
-											<span class="badge bg-info me-2" style="cursor: pointer;" @onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
-											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
-												<i class="bi bi-pencil"></i>
-											</button>
-											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
-												<i class="bi bi-trash"></i>
-											</button>
-										}
-									</div>
-								</div>
-							</div>
-
-							<!-- Recipe Inputs -->
-							<div class="col-md-6">
-								@foreach (var input in factoryRecipe.Recipe.Inputs)
-								{
-									var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
-									<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
-										 style="cursor: pointer;"
-										 @onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
-										 title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-										<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-										<span class="me-2 flex-grow-1">@input.Part.Name</span>
-										@* <span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min</span> *@
-										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe, input)</span>
-										@if (!isEnabled)
-										{
-											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
-										}
-									</div>
-								}
-							</div>
-
-							<!-- Recipe Outputs -->
-							<div class="col-md-6">
-								@foreach (var output in factoryRecipe.Recipe.Outputs)
-								{
-									var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
-									<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
-										 style="cursor: pointer;"
-										 @onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
-										 title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-										<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-											 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-										<span class="me-2 flex-grow-1">@output.Part.Name</span>
-										@* <span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min</span> *@
-										<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe, output)</span>
-										@if (!isEnabled)
-										{
-											<i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
-										}
-									</div>
-								}
-							</div>
-						</div>
-					}
-
-					<!-- Custom Input/Output Section -->
-					@if (selectedFactory.Inputs.Any() || selectedFactory.Outputs.Any())
-					{
-						<div class="row mb-4">
-							<!-- Custom Section Header -->
-							@* <div class="col-12 mb-3">
-								<div class="d-flex align-items-center">
-									<small class="text-muted me-2">Custom:</small>
-									<strong>Input/Output</strong>
-								</div>
-							</div> *@
-
-							<!-- Custom Inputs -->
-							<div class="col-md-6">
-								@foreach (var input in selectedFactory.Inputs.OrderBy(i => i.Part.Name))
-								{
-									<div class="d-flex align-items-center mb-2">
-										@if (editingInputId == input.Id)
-										{
-											<!-- Edit mode -->
-											<img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2"
-												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-											<div class="flex-grow-1 me-2">
-												<PartSelector Parts="@allParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-											</div>
-											<div class="me-2" style="width: 100px;">
-												<input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1" min="0.1">
-											</div>
-											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveInputEdit(input.Id)">
-												<i class="bi bi-check"></i>
-											</button>
-											<button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
-												<i class="bi bi-x"></i>
-											</button>
-										}
-										else
-										{
-											<!-- View mode -->
-											<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-											<span class="me-2 flex-grow-1">@input.Part.Name</span>
-											<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
-											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
-												<i class="bi bi-pencil"></i>
-											</button>
-											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
-												<i class="bi bi-trash"></i>
-											</button>
-										}
-									</div>
-								}
-							</div>
-
-							<!-- Custom Outputs -->
-							<div class="col-md-6">
-								@foreach (var output in selectedFactory.Outputs.OrderBy(o => o.Part.Name))
-								{
-									<div class="d-flex align-items-center mb-2">
-										@if (editingOutputId == output.Id)
-										{
-											<!-- Edit mode -->
-											<img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2"
-												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-											<div class="flex-grow-1 me-2">
-												<PartSelector Parts="@allParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-											</div>
-											<div class="me-2" style="width: 100px;">
-												<input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1" min="0.1">
-											</div>
-											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveOutputEdit(output.Id)">
-												<i class="bi bi-check"></i>
-											</button>
-											<button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
-												<i class="bi bi-x"></i>
-											</button>
-										}
-										else
-										{
-											<!-- View mode -->
-											<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-												 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-											<span class="me-2 flex-grow-1">@output.Part.Name</span>
-											<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
-											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
-												<i class="bi bi-pencil"></i>
-											</button>
-											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
-												<i class="bi bi-trash"></i>
-											</button>
-										}
-									</div>
-								}
-							</div>
-						</div>
-					}
-
-					<hr />
-
-					<!-- Add Forms Section -->
-					<div class="row g-3">
-						<!-- Add Recipe Form -->
-						<div class="col-md-4">
-							<label class="form-label small">Add Recipe</label>
-							<div class="row g-2">
-								<div class="col-12">
-									<select class="form-select form-select-sm" @bind="newRecipeId">
-										<option value="">Select a recipe...</option>
-										@foreach (var recipe in allRecipes)
-										{
-											<option value="@recipe.Id">@recipe.Name</option>
-										}
-									</select>
-								</div>
-								<div class="col-12 btn-group btn-group-sm" role="group">
-									<button class="btn btn-secondary btn-sm" @onclick="AddRecipe">Add</button>
-									<button class="btn btn-secondary btn-sm" @onclick="ShowAdvancedAddRecipeModal">Advance</button>
-								</div>
-							</div>
-						</div>
-
-						<!-- Add Input Form -->
-						<div class="col-md-4">
-							<label class="form-label small">Add Custom Input</label>
-							<div class="row g-2">
-								<div class="col-12">
-									<PartSelector Parts="@allParts" @bind-SelectedPart="newInputPart" Placeholder="Select input part..." CssClass="form-select-sm" />
-								</div>
-								<div class="col-6">
-									<input type="number" class="form-control form-control-sm" @bind="newInputAmount" placeholder="Amount/min" step="0.1" min="0.1">
-								</div>
-								<div class="col-6">
-									<button class="btn btn-secondary btn-sm w-100" @onclick="AddInput">Add</button>
-								</div>
-							</div>
-						</div>
-
-						<!-- Add Output Form -->
-						<div class="col-md-4">
-							<label class="form-label small">Add Custom Output</label>
-							<div class="row g-2">
-								<div class="col-12">
-									<PartSelector Parts="@allParts" @bind-SelectedPart="newOutputPart" Placeholder="Select output part..." CssClass="form-select-sm" />
-								</div>
-								<div class="col-6">
-									<input type="number" class="form-control form-control-sm" @bind="newOutputAmount" placeholder="Amount/min" step="0.1" min="0.1">
-								</div>
-								<div class="col-6">
-									<button class="btn btn-secondary btn-sm w-100" @onclick="AddOutput">Add</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		}
-		else
-		{
-			<div class="card">
-				<div class="card-body text-center text-muted">
-					<h5>Select a factory to view details</h5>
-					<p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>
-				</div>
-			</div>
-		}
-	</div>
+    <div class="col-md-8">
+        <FactoryDetail SelectedFactory="@selectedFactory"
+                       AllParts="@allParts"
+                       AllRecipes="@allRecipes"
+                       OnShowUpdateFactoryModal="@ShowUpdateFactoryModal"
+                       OnDeleteSelectedFactory="@DeleteSelectedFactory"
+                       OnRecipeChanged="@LoadDataAndRefreshBalance"
+                       OnInputOutputChanged="@LoadDataAndRefreshBalance"
+                       OnRecipeAdded="@LoadDataAndRefreshBalance"
+                       OnInputAdded="@LoadDataAndRefreshBalance"
+                       OnOutputAdded="@LoadDataAndRefreshBalance" />
+    </div>
 </div>
 
-<!-- Create Factory Modal -->
-<Modal @ref="createFactoryModal" Title="Create New Factory">
-    <BodyTemplate>
-        <div class="mb-3">
-            <label for="factoryName" class="form-label">Factory Name</label>
-            <input type="text" class="form-control" id="factoryName" @bind="newFactoryName" placeholder="Enter factory name">
-        </div>
-    </BodyTemplate>
-    <FooterTemplate>
-        <Button Color="ButtonColor.Secondary" @onclick="HideCreateFactoryModal">Cancel</Button>
-        <Button Color="ButtonColor.Primary" @onclick="CreateFactory">Create Factory</Button>
-    </FooterTemplate>
-</Modal>
-
-<!-- Edit Factory Modal -->
-<Modal @ref="updateFactoryModal" Title="Edit Factory">
-	<BodyTemplate>
-		@if (selectedFactory == null)
-		{
-			<p class="text-danger">Error: No factory selected.</p>
-			return;
-		}
-		<div class="mb-3">
-			<label for="factoryNameEdit" class="form-label">Factory Name</label>
-			<input type="text" class="form-control" id="factoryNameEdit" @bind="newFactoryName" placeholder="Enter factory name">
-		</div>
-	</BodyTemplate>
-	<FooterTemplate>
-		<Button Color="ButtonColor.Secondary" @onclick="HideUpdateFactoryModal">Cancel</Button>
-		<Button Color="ButtonColor.Primary" @onclick="UpdateFactory">Save Changes</Button>
-	</FooterTemplate>
-</Modal>
-
-@* Advanced Recipe Modals *@
-<RecipeEditorModal @ref="advancedRecipeModal"
-				   Recipes="allRecipes"
-				   IsEditMode="false"
-				   SelectedRecipe="editModalSelectedRecipe"
-				   InitialMultiplier="1"
-				   FactoryRecipeId="null"
-				   OnSave="OnAdvancedRecipeAdd" />
-
-<RecipeEditorModal @ref="advancedEditRecipeModal"
-				   Recipes="allRecipes"
-				   IsEditMode="true"
-				   SelectedRecipe="editModalSelectedRecipe"
-				   InitialMultiplier="editModalInitialMultiplier"
-				   FactoryRecipeId="editModalFactoryRecipeId"
-				   OnSave="OnAdvancedRecipeEdit" />
-
 @code {
-    private ResourceBalance? ResourceBalanceComponent { get; set; }    
-	private List<Factory> factories = new();
+    private ResourceBalance? ResourceBalanceComponent { get; set; }
+    private FactoryList? factoryListComponent;
+    
+    private List<Factory> factories = new();
     private List<DbPart> allParts = new();
     private List<DbRecipe> allRecipes = new();
     private Factory? selectedFactory;
-    private Modal createFactoryModal = default!;
-	private Modal updateFactoryModal = default!;
-    private string newFactoryName = "";
-
-    // Input form fields
-    private DbPart? newInputPart;
-    private double newInputAmount = 0;
-
-    // Output form fields
-    private DbPart? newOutputPart;
-    private double newOutputAmount = 0;
-
-    // Recipe form fields
-    private int? newRecipeId;
-    private double newRecipeMultiplier = 1.0;
-
-    // Edit mode fields for inputs
-    private int? editingInputId = null;
-    private DbPart? editingInputPart;
-    private double editingInputAmount = 0;
-
-    // Edit mode fields for outputs
-    private int? editingOutputId = null;
-    private DbPart? editingOutputPart;
-    private double editingOutputAmount = 0;
-
-    // Edit mode fields for recipes
-    private int? editingRecipeId = null;
-    private double editingRecipeMultiplier = 0;
-
-	// Recipe modals
-	private RecipeEditorModal? advancedRecipeModal;
-	private RecipeEditorModal? advancedEditRecipeModal;
-	
-	// Edit modal state
-	private DbRecipe? editModalSelectedRecipe;
-	private double? editModalInitialMultiplier;
-	private int? editModalFactoryRecipeId;
-
-
-	public List<Factory> SortedFactories => factories.OrderBy(f => f.Sorting).ToList();
 
     public void SetResourceBalanceComponent(ResourceBalance component)
     {
         ResourceBalanceComponent = component;
-	}
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
-    }    
-	
-	private async Task LoadData()
+    }
+
+    private async Task LoadData()
     {
         factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
         allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
@@ -472,221 +95,53 @@
         }
     }
 
-    private void SelectFactory(Factory factory)
+    private async Task OnFactorySelected(Factory? factory)
     {
+		await Task.CompletedTask;
         selectedFactory = factory;
-        ResetInputOutputForms();
-        CancelAllEdits();
+        StateHasChanged();
     }
 
-    private void StartEditInput(FactoryInput input)
+    private async Task OnFactoryListChanged()
     {
-        CancelAllEdits();
-        editingInputId = input.Id;
-        editingInputPart = input.Part;
-        editingInputAmount = input.AmountPerMinute;
-    }
-
-    private void StartEditOutput(FactoryOutput output)
-    {
-        CancelAllEdits();
-        editingOutputId = output.Id;
-        editingOutputPart = output.Part;
-        editingOutputAmount = output.AmountPerMinute;
-    }
-
-    private async Task SaveInputEdit(int inputId)
-    {
-        if (editingInputPart != null && editingInputAmount > 0)
+        // Update sorting values on factories
+        for (int i = 0; i < factories.Count; i++)
         {
-            // Remove the old input
-            await FactoryService.RemoveFactoryInputAsync(inputId);
-            // Add the new input with updated values
-            await FactoryService.AddFactoryInputAsync(selectedFactory!.Id, editingInputPart.Id, editingInputAmount);
-            await LoadDataAndRefreshBalance();
-            CancelInputEdit();
+            factories[i].Sorting = i;
+            await FactoryService.UpdateFactoryAsync(factories[i]);
         }
+        await TriggerBalanceRefresh();
     }
 
-    private async Task SaveOutputEdit(int outputId)
+    private async Task OnFactoryOperation((Factory factory, string operation) args)
     {
-        if (editingOutputPart != null && editingOutputAmount > 0)
+        switch (args.operation)
         {
-            // Remove the old output
-            await FactoryService.RemoveFactoryOutputAsync(outputId);
-            // Add the new output with updated values
-            await FactoryService.AddFactoryOutputAsync(selectedFactory!.Id, editingOutputPart.Id, editingOutputAmount);
-            await LoadDataAndRefreshBalance();
-            CancelOutputEdit();
+            case "create":
+                await FactoryService.CreateFactoryAsync(args.factory.Name);
+                break;
+            case "update":
+                await FactoryService.UpdateFactoryAsync(args.factory);
+                break;
+            case "delete":
+                await FactoryService.DeleteFactoryAsync(args.factory.Id);
+                selectedFactory = null;
+                break;
         }
-    }
-
-    private void CancelInputEdit()
-    {
-        editingInputId = null;
-        editingInputPart = null;
-        editingInputAmount = 0;
-    }
-
-    private void CancelOutputEdit()
-    {
-        editingOutputId = null;
-        editingOutputPart = null;
-        editingOutputAmount = 0;
-    }
-
-    private void StartEditRecipe(FactoryRecipe factoryRecipe)
-    {
-        CancelAllEdits();
-        editingRecipeId = factoryRecipe.Id;
-        editingRecipeMultiplier = factoryRecipe.Multiplier;
-    }
-
-    private async Task SaveRecipeEdit(int factoryRecipeId)
-    {
-        if (editingRecipeMultiplier > 0)
-        {
-            await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier);
-            await LoadDataAndRefreshBalance();
-            CancelRecipeEdit();
-        }
-    }
-
-    private void CancelRecipeEdit()
-    {
-        editingRecipeId = null;
-        editingRecipeMultiplier = 0;
-    }
-
-    private async Task AddRecipe()
-    {
-        if (selectedFactory != null && newRecipeId.HasValue && newRecipeMultiplier > 0)
-        {
-            await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, newRecipeId.Value, newRecipeMultiplier);
-            await LoadDataAndRefreshBalance();
-            ResetRecipeForm();
-        }
-    }
-
-    private async Task RemoveRecipe(int factoryRecipeId)
-    {
-        await FactoryService.RemoveFactoryRecipeAsync(factoryRecipeId);
         await LoadDataAndRefreshBalance();
     }
 
-    private void ResetRecipeForm()
+    private void ShowUpdateFactoryModal()
     {
-        newRecipeId = null;
-        newRecipeMultiplier = 1.0;
+        factoryListComponent?.ShowUpdateFactoryModal();
     }
-
-    private void CancelAllEdits()
-    {
-        CancelInputEdit();
-        CancelOutputEdit();
-        CancelRecipeEdit();
-    }
-
-    private void ShowCreateFactoryModal()
-    {
-        newFactoryName = "";
-        createFactoryModal.ShowAsync();
-    }
-
-	private void ShowUpdateFactoryModal()
-	{
-		if (selectedFactory != null)
-		{
-			newFactoryName = selectedFactory.Name;
-			updateFactoryModal.ShowAsync();
-		}
-	}
-
-    private async Task HideCreateFactoryModal()
-    {
-        await createFactoryModal.HideAsync();
-		newFactoryName = "";
-    }
-
-	private async Task HideUpdateFactoryModal()
-	{
-		await updateFactoryModal.HideAsync();
-	}
-
-    private async Task CreateFactory()
-    {
-        if (!string.IsNullOrWhiteSpace(newFactoryName))
-        {
-            await FactoryService.CreateFactoryAsync(newFactoryName);
-            await HideCreateFactoryModal();
-            await LoadDataAndRefreshBalance();
-        }
-    }
-
-	private async Task UpdateFactory()
-	{
-		if (selectedFactory == null || string.IsNullOrWhiteSpace(newFactoryName))
-		{
-			return;
-		}
-		// Update the factory name
-		selectedFactory.Name = newFactoryName;
-		await FactoryService.UpdateFactoryAsync(selectedFactory);
-		await HideUpdateFactoryModal();
-		await LoadDataAndRefreshBalance();
-	}
 
     private async Task DeleteSelectedFactory()
     {
-        if (selectedFactory != null)
+        if (factoryListComponent != null)
         {
-            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{selectedFactory.Name}'?");
-            if (confirmed)
-            {
-                await FactoryService.DeleteFactoryAsync(selectedFactory.Id);
-                selectedFactory = null;
-                await LoadDataAndRefreshBalance();
-            }
+            await factoryListComponent.DeleteSelectedFactory();
         }
-    }
-
-    private async Task AddInput()
-    {
-        if (selectedFactory != null && newInputPart != null && newInputAmount > 0)
-        {
-            await FactoryService.AddFactoryInputAsync(selectedFactory.Id, newInputPart.Id, newInputAmount);
-            await LoadDataAndRefreshBalance();
-            ResetInputOutputForms();
-        }
-    }
-
-    private async Task AddOutput()
-    {
-        if (selectedFactory != null && newOutputPart != null && newOutputAmount > 0)
-        {
-            await FactoryService.AddFactoryOutputAsync(selectedFactory.Id, newOutputPart.Id, newOutputAmount);
-            await LoadDataAndRefreshBalance();
-            ResetInputOutputForms();
-        }
-    }
-
-    private async Task RemoveInput(int inputId)
-    {
-        await FactoryService.RemoveFactoryInputAsync(inputId);
-        await LoadDataAndRefreshBalance();
-    }
-
-    private async Task RemoveOutput(int outputId)
-    {
-        await FactoryService.RemoveFactoryOutputAsync(outputId);
-        await LoadDataAndRefreshBalance();
-    }    private void ResetInputOutputForms()
-    {
-        newInputPart = null;
-        newInputAmount = 0;
-        newOutputPart = null;
-        newOutputAmount = 0;
-        ResetRecipeForm();
     }
 
     public void Dispose()
@@ -694,131 +149,4 @@
         // Clean up component references to prevent memory leaks
         ResourceBalanceComponent = null;
     }
-
-	private async Task OnFactoryListUpdate(SortableListEventArgs args) {
-		var itemToMove = factories[args.OldIndex];
-        factories.RemoveAt(args.OldIndex);
-        if (args.NewIndex < factories.Count) {
-            factories.Insert(args.NewIndex, itemToMove);
-		} else {
-            factories.Add(itemToMove);
-		}
-
-		// Update all sorting values on factories based on the current order
-		for (int i = 0; i < factories.Count; i++) {
-			factories[i].Sorting = i;
-			await FactoryService.UpdateFactoryAsync(factories[i]); // Fire and forget
-		}
-	}
-
-	private int GetFactoryInputCount(Factory factory) => factory.Inputs.Count + factory.Recipes.Sum(r => r.Recipe.Inputs.Count);
-	private int GetFactoryOutputCount(Factory factory) => factory.Outputs.Count + factory.Recipes.Sum(r => r.Recipe.Outputs.Count);
-
-	/// <summary>
-	/// Toggle whether a recipe input is enabled/disabled for balance calculations
-	/// </summary>
-	private async Task ToggleRecipeInput(int factoryRecipeId, int recipeInputId)
-	{
-		await FactoryService.ToggleRecipeInputAsync(factoryRecipeId, recipeInputId);
-		await LoadDataAndRefreshBalance();
-	}
-
-	/// <summary>
-	/// Toggle whether a recipe output is enabled/disabled for balance calculations
-	/// </summary>
-	private async Task ToggleRecipeOutput(int factoryRecipeId, int recipeOutputId)
-	{
-		await FactoryService.ToggleRecipeOutputAsync(factoryRecipeId, recipeOutputId);
-		await LoadDataAndRefreshBalance();
-	}
-
-
-	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input) {
-		var baseNumber = input.GetQuantityPerMinute(1);
-		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier);
-
-		var formattedBaseNumber = FormatNumber(baseNumber);
-		var formattedTotalNumber = FormatNumber(totalNumber);
-
-		if(factoryRecipe.Multiplier == 1.0) {
-			@* return $"{input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min"; *@
-			return $"{formattedTotalNumber}/min";
-		} else {
-			@* return $"{input.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min"; *@
-			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-		}
-	}
-
-	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output) {
-		var baseNumber = output.GetQuantityPerMinute(1);
-		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier);
-
-		var formattedBaseNumber = FormatNumber(baseNumber);
-		var formattedTotalNumber = FormatNumber(totalNumber);
-
-		if(factoryRecipe.Multiplier == 1.0) {
-			return $"{formattedTotalNumber}/min";
-		} else {
-			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-		}
-	}
-	
-	private string FormatNumber(double value)
-    {
-        // Round to 4 decimal places and remove trailing zeros
-        return Math.Round(value, 4).ToString("0.####");
-    }
-
-	private async void ShowAdvancedAddRecipeModal()
-    {
-        if (advancedRecipeModal != null)
-		{
-			if(newRecipeId.HasValue) {
-				// Pass inn the selected recipe and multiplier
-				editModalSelectedRecipe = allRecipes.FirstOrDefault(r => r.Id == newRecipeId.Value);
-				editModalInitialMultiplier = 1;
-				editModalFactoryRecipeId = null;
-				StateHasChanged();
-			}
-
-            await advancedRecipeModal.ShowModal();
-		}
-    }
-
-    private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
-    {
-        if (advancedEditRecipeModal != null)
-        {
-            // Set the state properties for editing mode
-            editModalSelectedRecipe = factoryRecipe.Recipe;
-            editModalInitialMultiplier = factoryRecipe.Multiplier;
-            editModalFactoryRecipeId = factoryRecipe.Id;
-            StateHasChanged(); // Trigger re-render to pass new parameters
-            await advancedEditRecipeModal.ShowModal();
-        }
-    }
-
-	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
-	{
-		if (selectedFactory != null)
-		{
-			await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, args.recipeId, args.multiplier);
-			// Clear new recipe id
-			newRecipeId = null;
-			editModalFactoryRecipeId = null;
-			editModalSelectedRecipe = null;
-			editModalInitialMultiplier = null;
-			StateHasChanged();
-			await LoadDataAndRefreshBalance();
-		}
-	}
-
-	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
-	{
-		if (selectedFactory != null && args.factoryRecipeId.HasValue)
-		{
-			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
-			await LoadDataAndRefreshBalance();
-		}
-	}
 }

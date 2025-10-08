@@ -112,7 +112,7 @@
 										}
 										else
 										{
-											<span class="badge bg-info me-2">@factoryRecipe.Multiplier x</span>
+											<span class="badge bg-info me-2">@FormatNumber(factoryRecipe.Multiplier) x</span>
 											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
 												<i class="bi bi-pencil"></i>
 											</button>
@@ -774,25 +774,38 @@
 
 
 	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input) {
-		// Lets change this to Base * Multi = result / min
-		// Example: 30 * 1.5 = 45 / min
+		var baseNumber = input.GetQuantityPerMinute(1);
+		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier);
 
-		// Old way:
-		// @input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")/min
-
+		var formattedBaseNumber = FormatNumber(baseNumber);
+		var formattedTotalNumber = FormatNumber(totalNumber);
 
 		if(factoryRecipe.Multiplier == 1.0) {
-			return $"{input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
+			@* return $"{input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min"; *@
+			return $"{formattedTotalNumber}/min";
 		} else {
-			return $"{input.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
+			@* return $"{input.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {input.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min"; *@
+			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
 		}
 	}
 
 	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output) {
+		var baseNumber = output.GetQuantityPerMinute(1);
+		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier);
+
+		var formattedBaseNumber = FormatNumber(baseNumber);
+		var formattedTotalNumber = FormatNumber(totalNumber);
+
 		if(factoryRecipe.Multiplier == 1.0) {
-			return $"{output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
+			return $"{formattedTotalNumber}/min";
 		} else {
-			return $"{output.GetQuantityPerMinute(1).ToString("F1")} x {factoryRecipe.Multiplier} = {output.GetQuantityPerMinute(factoryRecipe.Multiplier).ToString("F1")}/min";
+			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
 		}
 	}
+	
+	private string FormatNumber(double value)
+    {
+        // Round to 4 decimal places and remove trailing zeros
+        return Math.Round(value, 4).ToString("0.####");
+    }
 }

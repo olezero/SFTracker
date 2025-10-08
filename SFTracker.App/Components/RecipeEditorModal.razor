@@ -8,7 +8,7 @@
     <BodyTemplate>
         <div class="mb-3">
             <label for="recipeSelect" class="form-label">Recipe</label>
-            <select id="recipeSelect" class="form-select" @onchange="OnRecipeSelect">
+            <select id="recipeSelect" class="form-select form-select-sm" @onchange="OnRecipeSelect">
                 <option value="">Select a recipe...</option>
                 @foreach (var recipe in Recipes)
                 {
@@ -19,20 +19,24 @@
         @if (CurrentRecipe != null)
         {
             <div class="mb-3">
-                <label class="form-label">Multiplier</label>
-                <input type="number" class="form-control" value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
+                <div class="d-flex align-items-center">
+                    <label class="form-label mb-0 flex-grow-1">Multiplier</label>
+                    <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
+                           value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
+                </div>
             </div>
             <div class="row">
                 <div class="col">
                     <h6>Inputs</h6>
                     @foreach (var input in CurrentRecipe.Inputs)
                     {
-                        <div class="input-group mb-2">
-                            <span class="input-group-text">
-                                <img src="@input.Part.ImageUrl" alt="icon" style="width:24px;height:24px;" />
-                                @input.Part.Name
-                            </span>
-                            <input type="number" class="form-control" value="@FormatNumber(InputValues[input.Id])" @oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
+                        <div class="d-flex align-items-center mb-2">
+                            <img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2" 
+                                 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+                            <span class="flex-grow-1">@input.Part.Name</span>
+                            <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
+                                   value="@FormatNumber(InputValues[input.Id])" 
+                                   @oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
                         </div>
                     }
                 </div>
@@ -40,12 +44,13 @@
                     <h6>Outputs</h6>
                     @foreach (var output in CurrentRecipe.Outputs)
                     {
-                        <div class="input-group mb-2">
-                            <span class="input-group-text">
-                                <img src="@output.Part.ImageUrl" alt="icon" style="width:24px;height:24px;" />
-                                @output.Part.Name
-                            </span>
-                            <input type="number" class="form-control" value="@FormatNumber(OutputValues[output.Id])" @oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
+                        <div class="d-flex align-items-center mb-2">
+                            <img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2" 
+                                 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+                            <span class="flex-grow-1">@output.Part.Name</span>
+                            <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
+                                   value="@FormatNumber(OutputValues[output.Id])" 
+                                   @oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
                         </div>
                     }
                 </div>
@@ -174,12 +179,6 @@
         if (CurrentRecipe == null || Multiplier <= 0) return;
         await OnSave.InvokeAsync((CurrentRecipe.Id, Multiplier, IsEditMode ? FactoryRecipeId : null));
         HideModal();
-    }
-
-    private string PartIcon(int partId)
-    {
-        // TODO: Implement part icon lookup, fallback to default
-        return $"/images/{partId}.png";
     }
 
     private string FormatNumber(double value)

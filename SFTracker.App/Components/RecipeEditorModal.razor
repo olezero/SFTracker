@@ -8,7 +8,7 @@
     <BodyTemplate>
         <div class="mb-3">
             <label for="recipeSelect" class="form-label">Recipe</label>
-            <select id="recipeSelect" class="form-select" @onchange="OnRecipeSelect" disabled="@IsEditMode">
+            <select id="recipeSelect" class="form-select" @onchange="OnRecipeSelect">
                 <option value="">Select a recipe...</option>
                 @foreach (var recipe in Recipes)
                 {
@@ -20,7 +20,7 @@
         {
             <div class="mb-3">
                 <label class="form-label">Multiplier</label>
-                <input type="number" class="form-control" value="@Multiplier" @oninput="OnMultiplierChange" min="0" step="0.1">
+                <input type="number" class="form-control" value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
             </div>
             <div class="row">
                 <div class="col">
@@ -32,7 +32,7 @@
                                 <img src="@input.Part.ImageUrl" alt="icon" style="width:24px;height:24px;" />
                                 @input.Part.Name
                             </span>
-                            <input type="number" class="form-control" value="@InputValues[input.Id]" @oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
+                            <input type="number" class="form-control" value="@FormatNumber(InputValues[input.Id])" @oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
                         </div>
                     }
                 </div>
@@ -45,7 +45,7 @@
                                 <img src="@output.Part.ImageUrl" alt="icon" style="width:24px;height:24px;" />
                                 @output.Part.Name
                             </span>
-                            <input type="number" class="form-control" value="@OutputValues[output.Id]" @oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
+                            <input type="number" class="form-control" value="@FormatNumber(OutputValues[output.Id])" @oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
                         </div>
                     }
                 </div>
@@ -180,5 +180,11 @@
     {
         // TODO: Implement part icon lookup, fallback to default
         return $"/images/{partId}.png";
+    }
+
+    private string FormatNumber(double value)
+    {
+        // Round to 4 decimal places and remove trailing zeros
+        return Math.Round(value, 4).ToString("0.####");
     }
 }

@@ -303,10 +303,18 @@
 <RecipeEditorModal @ref="advancedEditRecipeModal"
 				   Recipes="allRecipes"
 				   IsEditMode="true"
+				   SelectedRecipe="editModalSelectedRecipe"
+				   InitialMultiplier="editModalInitialMultiplier"
+				   FactoryRecipeId="editModalFactoryRecipeId"
 				   OnSave="OnAdvancedRecipeEdit" />
 @code {
 	private RecipeEditorModal? advancedRecipeModal;
 	private RecipeEditorModal? advancedEditRecipeModal;
+	
+	// Edit modal state
+	private DbRecipe? editModalSelectedRecipe;
+	private double? editModalInitialMultiplier;
+	private int? editModalFactoryRecipeId;
 
     private async void ShowAdvancedAddRecipeModal()
     {
@@ -318,10 +326,11 @@
     {
         if (advancedEditRecipeModal != null)
         {
-            // Set the properties for editing mode
-            advancedEditRecipeModal.SelectedRecipe = factoryRecipe.Recipe;
-            advancedEditRecipeModal.InitialMultiplier = factoryRecipe.Multiplier;
-            advancedEditRecipeModal.FactoryRecipeId = factoryRecipe.Id;
+            // Set the state properties for editing mode
+            editModalSelectedRecipe = factoryRecipe.Recipe;
+            editModalInitialMultiplier = factoryRecipe.Multiplier;
+            editModalFactoryRecipeId = factoryRecipe.Id;
+            StateHasChanged(); // Trigger re-render to pass new parameters
             await advancedEditRecipeModal.ShowModal();
         }
     }
@@ -339,7 +348,7 @@
 	{
 		if (selectedFactory != null && args.factoryRecipeId.HasValue)
 		{
-			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.multiplier);
+			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
 			await LoadDataAndRefreshBalance();
 		}
 	}

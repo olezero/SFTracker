@@ -138,6 +138,16 @@ public class FactoryService {
 		}
 	}
 
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, int recipeId, double multiplier) {
+		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
+		if (factoryRecipe != null) {
+			factoryRecipe.RecipeId = recipeId;
+			factoryRecipe.Multiplier = multiplier;
+			m_context.FactoryRecipes.Update(factoryRecipe);
+			await m_context.SaveChangesAsync();
+		}
+	}
+
 	public async Task RemoveFactoryRecipeAsync(int factoryRecipeId) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {

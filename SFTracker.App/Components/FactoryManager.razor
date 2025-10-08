@@ -388,7 +388,8 @@
 				   OnSave="OnAdvancedRecipeEdit" />
 
 @code {
-    private ResourceBalance? ResourceBalanceComponent { get; set; }    private List<Factory> factories = new();
+    private ResourceBalance? ResourceBalanceComponent { get; set; }    
+	private List<Factory> factories = new();
     private List<DbPart> allParts = new();
     private List<DbRecipe> allRecipes = new();
     private Factory? selectedFactory;
@@ -442,7 +443,9 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
-    }    private async Task LoadData()
+    }    
+	
+	private async Task LoadData()
     {
         factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
         allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);

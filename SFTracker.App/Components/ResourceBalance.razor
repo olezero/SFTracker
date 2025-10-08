@@ -11,6 +11,16 @@
 		<button class="btn btn-outline-primary btn-sm" @onclick="RefreshBalance">
 			<i class="bi bi-arrow-clockwise"></i>
 		</button>
+		@* Factory selection box *@
+		<div>
+			<select class="form-select form-select-sm" @bind="selectedFactory">
+				<option value="all">All Factories</option>
+				@foreach (var factory in factories)
+				{
+					<option value="@factory.Id">@factory.Name</option>
+				}
+			</select>
+		</div>
 	</div>
 	<div class="card-body p-0">
 		@if (isLoading)
@@ -55,7 +65,8 @@
 										<i class="bi bi-arrow-right-short"></i>
 									</td>
 									<td class="text-end">
-										<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
+										<span
+											class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
 									</td>
 									<td class="text-end">
 										@if (Math.Abs(part.Balance) < DisplayConstants.BalanceThreshold)
@@ -64,11 +75,13 @@
 										}
 										else if (part.Balance > 0)
 										{
-											<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+											<span
+												class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
 										}
 										else
 										{
-											<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+											<span
+												class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
 										}
 									</td>
 								</tr>
@@ -82,15 +95,18 @@
 			<div class="card-footer bg-dark p-2">
 				<div class="row text-center">
 					<div class="col-4">
-						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance > DisplayConstants.BalanceThreshold)</small>
-						<div><small class="text-muted">Surplus</small></div>
-					</div>
-					<div class="col-4">
-						<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance < -DisplayConstants.BalanceThreshold)</small>
-						<div><small class="text-muted">Deficit</small></div>
-					</div>
-					<div class="col-4">
-						<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <= DisplayConstants.BalanceThreshold)</small>
+						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance >
+													DisplayConstants.BalanceThreshold)</small>
+					<div><small class="text-muted">Surplus</small></div>
+				</div>
+				<div class="col-4">
+					<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance <
+												-DisplayConstants.BalanceThreshold)</small>
+					<div><small class="text-muted">Deficit</small></div>
+				</div>
+				<div class="col-4">
+					<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <=
+												DisplayConstants.BalanceThreshold)</small>
 					<div><small class="text-muted">Balanced</small></div>
 				</div>
 			</div>
@@ -109,9 +125,25 @@
 
 
 @code {
+	private List<Factory> factories = new();
 	private List<PartBalance> partBalances = new();
 	private bool isLoading = true;
 	private CancellationTokenSource? _debounceTokenSource;
+
+	private string selectedFactoryBacking = "all";
+	private string selectedFactory
+	{
+		get => selectedFactoryBacking;
+		set
+		{
+			if (selectedFactoryBacking != value)
+			{
+				selectedFactoryBacking = value;
+				_ = RefreshBalanceDebounced();
+			}
+		}
+	}
+
 
 	public class PartBalance
 	{
@@ -126,7 +158,9 @@
 	protected override async Task OnInitializedAsync()
 	{
 		await RefreshBalance();
+		await LoadData();
 	}
+
 
 	public async Task RefreshBalance()
 	{
@@ -135,6 +169,7 @@
 
 		try
 		{
+			await LoadData();
 			await LoadPartBalances();
 		}
 		finally
@@ -145,7 +180,24 @@
 	}
 	private async Task LoadPartBalances()
 	{
-		var factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		var factories = new List<Factory>();
+		if (selectedFactoryBacking != "all" && int.TryParse(selectedFactoryBacking, out var selectedFactoryId))
+		{
+			// Filter to the selected factory
+			@* factories = factories.Where(f => f.Id == selectedFactoryId).ToList(); *@
+			var factory = await FactoryService.GetFactoryByIdAsync(selectedFactoryId).ConfigureAwait(false);
+			if (factory != null)
+			{
+				factories.Add(factory);
+			}
+		}
+		else
+		{
+			// Use all factories
+			factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		}
+
+		@* var factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false); *@
 		var allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
 
 		// Get all parts that are used in any factory (inputs, outputs, or recipes)
@@ -226,7 +278,6 @@
 			});
 		}
 	}
-
 	public async Task RefreshBalanceDebounced(int delayMs = 100)
 	{
 		// Cancel any existing debounce operation
@@ -248,7 +299,6 @@
 			// Component was disposed, ignore
 		}
 	}
-
 	public void Dispose()
 	{
 		try
@@ -264,5 +314,11 @@
 		{
 			_debounceTokenSource = null;
 		}
+	}
+
+
+	private async Task LoadData()
+	{
+		factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
 	}
 }

@@ -102,7 +102,7 @@
 										@if (editingRecipeId == factoryRecipe.Id)
 										{
 											<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-												   style="width: 80px;" step="0.1" min="0.1">
+												   style="width: 80px;" step="0.1" min="0.1" />
 											<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
 												<i class="bi bi-check"></i>
 											</button>
@@ -112,12 +112,9 @@
 										}
 										else
 										{
-											<span class="badge bg-info me-2">@FormatNumber(factoryRecipe.Multiplier) x</span>
-											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
+											<span class="badge bg-info me-2" style="cursor: pointer;" @onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
+											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
 												<i class="bi bi-pencil"></i>
-											</button>
-											<button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
-												<i class="bi bi-calculator"></i>
 											</button>
 											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
 												<i class="bi bi-trash"></i>
@@ -286,75 +283,10 @@
 										}
 									</select>
 								</div>
-								<div class="col-6">
-									<input type="number" class="form-control form-control-sm" @bind="newRecipeMultiplier"
-										   placeholder="1.0" step="0.1" min="0.1">
+								<div class="col-12 btn-group btn-group-sm" role="group">
+									<button class="btn btn-secondary btn-sm" @onclick="AddRecipe">Add</button>
+									<button class="btn btn-secondary btn-sm" @onclick="ShowAdvancedAddRecipeModal">Advance</button>
 								</div>
-								<div class="col-6 d-flex gap-2">
-									<button class="btn btn-secondary btn-sm w-100" @onclick="AddRecipe">Add</button>
-									<button class="btn btn-outline-primary btn-sm w-100" @onclick="ShowAdvancedAddRecipeModal">Advanced Add</button>
-								</div>
-@* Advanced Recipe Modals *@
-<RecipeEditorModal @ref="advancedRecipeModal"
-				   Recipes="allRecipes"
-				   IsEditMode="false"
-				   OnSave="OnAdvancedRecipeAdd" />
-
-<RecipeEditorModal @ref="advancedEditRecipeModal"
-				   Recipes="allRecipes"
-				   IsEditMode="true"
-				   SelectedRecipe="editModalSelectedRecipe"
-				   InitialMultiplier="editModalInitialMultiplier"
-				   FactoryRecipeId="editModalFactoryRecipeId"
-				   OnSave="OnAdvancedRecipeEdit" />
-@code {
-	private RecipeEditorModal? advancedRecipeModal;
-	private RecipeEditorModal? advancedEditRecipeModal;
-	
-	// Edit modal state
-	private DbRecipe? editModalSelectedRecipe;
-	private double? editModalInitialMultiplier;
-	private int? editModalFactoryRecipeId;
-
-    private async void ShowAdvancedAddRecipeModal()
-    {
-        if (advancedRecipeModal != null)
-            await advancedRecipeModal.ShowModal();
-    }
-
-    private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
-    {
-        if (advancedEditRecipeModal != null)
-        {
-            // Set the state properties for editing mode
-            editModalSelectedRecipe = factoryRecipe.Recipe;
-            editModalInitialMultiplier = factoryRecipe.Multiplier;
-            editModalFactoryRecipeId = factoryRecipe.Id;
-            StateHasChanged(); // Trigger re-render to pass new parameters
-            await advancedEditRecipeModal.ShowModal();
-        }
-    }
-
-	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
-	{
-		if (selectedFactory != null)
-		{
-			await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, args.recipeId, args.multiplier);
-			await LoadDataAndRefreshBalance();
-		}
-	}
-
-	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
-	{
-		if (selectedFactory != null && args.factoryRecipeId.HasValue)
-		{
-			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
-			await LoadDataAndRefreshBalance();
-		}
-	}
-
-	// ...existing code...
-}
 							</div>
 						</div>
 
@@ -438,6 +370,23 @@
 	</FooterTemplate>
 </Modal>
 
+@* Advanced Recipe Modals *@
+<RecipeEditorModal @ref="advancedRecipeModal"
+				   Recipes="allRecipes"
+				   IsEditMode="false"
+				   SelectedRecipe="editModalSelectedRecipe"
+				   InitialMultiplier="1"
+				   FactoryRecipeId="null"
+				   OnSave="OnAdvancedRecipeAdd" />
+
+<RecipeEditorModal @ref="advancedEditRecipeModal"
+				   Recipes="allRecipes"
+				   IsEditMode="true"
+				   SelectedRecipe="editModalSelectedRecipe"
+				   InitialMultiplier="editModalInitialMultiplier"
+				   FactoryRecipeId="editModalFactoryRecipeId"
+				   OnSave="OnAdvancedRecipeEdit" />
+
 @code {
     private ResourceBalance? ResourceBalanceComponent { get; set; }    private List<Factory> factories = new();
     private List<DbPart> allParts = new();
@@ -473,13 +422,22 @@
     private int? editingRecipeId = null;
     private double editingRecipeMultiplier = 0;
 
+	// Recipe modals
+	private RecipeEditorModal? advancedRecipeModal;
+	private RecipeEditorModal? advancedEditRecipeModal;
+	
+	// Edit modal state
+	private DbRecipe? editModalSelectedRecipe;
+	private double? editModalInitialMultiplier;
+	private int? editModalFactoryRecipeId;
+
+
 	public List<Factory> SortedFactories => factories.OrderBy(f => f.Sorting).ToList();
 
     public void SetResourceBalanceComponent(ResourceBalance component)
     {
         ResourceBalanceComponent = component;
-        Console.WriteLine($"ResourceBalanceComponent set in FactoryManager: {component != null}");
-    }
+	}
 
     protected override async Task OnInitializedAsync()
     {
@@ -735,7 +693,6 @@
     }
 
 	private async Task OnFactoryListUpdate(SortableListEventArgs args) {
-		Console.WriteLine("Factory list updated via drag-and-drop.");
 		var itemToMove = factories[args.OldIndex];
         factories.RemoveAt(args.OldIndex);
         if (args.NewIndex < factories.Count) {
@@ -808,4 +765,57 @@
         // Round to 4 decimal places and remove trailing zeros
         return Math.Round(value, 4).ToString("0.####");
     }
+
+	private async void ShowAdvancedAddRecipeModal()
+    {
+        if (advancedRecipeModal != null)
+		{
+			if(newRecipeId.HasValue) {
+				// Pass inn the selected recipe and multiplier
+				editModalSelectedRecipe = allRecipes.FirstOrDefault(r => r.Id == newRecipeId.Value);
+				editModalInitialMultiplier = 1;
+				editModalFactoryRecipeId = null;
+				StateHasChanged();
+			}
+
+            await advancedRecipeModal.ShowModal();
+		}
+    }
+
+    private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
+    {
+        if (advancedEditRecipeModal != null)
+        {
+            // Set the state properties for editing mode
+            editModalSelectedRecipe = factoryRecipe.Recipe;
+            editModalInitialMultiplier = factoryRecipe.Multiplier;
+            editModalFactoryRecipeId = factoryRecipe.Id;
+            StateHasChanged(); // Trigger re-render to pass new parameters
+            await advancedEditRecipeModal.ShowModal();
+        }
+    }
+
+	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
+	{
+		if (selectedFactory != null)
+		{
+			await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, args.recipeId, args.multiplier);
+			// Clear new recipe id
+			newRecipeId = null;
+			editModalFactoryRecipeId = null;
+			editModalSelectedRecipe = null;
+			editModalInitialMultiplier = null;
+			StateHasChanged();
+			await LoadDataAndRefreshBalance();
+		}
+	}
+
+	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
+	{
+		if (selectedFactory != null && args.factoryRecipeId.HasValue)
+		{
+			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
+			await LoadDataAndRefreshBalance();
+		}
+	}
 }

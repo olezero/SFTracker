@@ -87,10 +87,15 @@
         }
         else if (!IsEditMode)
         {
-            CurrentRecipe = null;
             Multiplier = 1.0;
-            InputValues.Clear();
-            OutputValues.Clear();
+			if(SelectedRecipe != null) {
+				CurrentRecipe = SelectedRecipe;
+				PopulateFieldsFromMultiplier();
+			} else {
+            	CurrentRecipe = null;
+            	InputValues.Clear();
+            	OutputValues.Clear();
+			}
         }
     }
 
@@ -166,6 +171,11 @@
 
     private async void HideModal()
     {
+		// Clear values when hiding
+		CurrentRecipe = null;
+		InputValues.Clear();
+		OutputValues.Clear();
+		Multiplier = 1.0;
         await modalRef.HideAsync();
     }
 

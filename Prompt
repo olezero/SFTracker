@@ -1,0 +1,52 @@
+Hey! I have a feature request. I want a new "Add/Edit Recipe" modal.
+Currently the user can add a recipe to a factory directly in the FactoryManger page/component, which works fine.
+
+But i would like to create a new component that has a more advance way of adding / editing a factory recipe.
+
+When adding i want a modal to pop up
+1. The user selects a recipe from a drop down (The same way as it works currently)
+2. After that all the recipe inputs and outputs are displayed as if the recipe had a multiplier of 1, all of these values are input fields. Each of these should be populated with the recipes default values. And should also have the part icon / name next / above them - we can continue styling later.
+3. If the user changes one of the input fields, all the others are calculated on the fly to match that input. So for instance if a recipe has 30 Iron Ore as input and 30 Iron Ingot as output with a 1x multiplier, if the user changed the output to 15 iron ingots, the UI would update and set input iron ore to 15, and multiplier to 0.5
+4. These fields should be cleared if the user selects another recipe from the dropdown
+5. The modal should have a Add / Save button to add or save the recipe to the factory, depending on if we are editing or adding a new recipe (Probably controller via properties to the component)
+6. We should not modify the existing code in FactoryManager for now, just add a temporary button next to the current "Add" button, and a temparary "Edit" button next to the current Edit recipe button, so that we can test both at ways at the same time.
+
+
+We use BlazorBootstrap modals for our modal logic, example from FactoryManager:
+<Modal @ref="createFactoryModal" Title="Create New Factory">
+    <BodyTemplate>
+        <div class="mb-3">
+            <label for="factoryName" class="form-label">Factory Name</label>
+            <input type="text" class="form-control" id="factoryName" @bind="newFactoryName" placeholder="Enter factory name">
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideCreateFactoryModal">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="CreateFactory">Create Factory</Button>
+    </FooterTemplate>
+</Modal>
+
+
+Also, the logic for updating the input/output values would work as such:
+1. User changes a value in a field
+2. We listen for keydown (or equivilant, oninput, or whatever is needed)
+	This should call a method "RecalculateForm((nullable)inputField)"
+3. Based on the number the user input in the given field, we first calculate the "multiplier" that would be required for that input value to be true, so for the example over if the first number the user added was 6 on iron ingot ouput, we take the new value of 6 divided by the recipe output value of 30 = 0.2, and use that for the multiplier
+4. After calculating the multiplier, we update all OTHER fields with a new value based on the multiplier, so in this scenario we would set the input iron ingot input to 30 * multiplier (0.2) = 6. If the recipe had more input/outputs we would do the same with those fields. But again, we cannot touch the field that raised the input event, since we dont want to mess with the users input.
+
+A bit more on the RecalculateForm method, i noted that the current input field could be NULL, because we want to be able to call the method without a input field. In this scenario we would just recalculate all values based on the current value of the "Multiplier" field.
+
+Any questions ? 
+
+
+
+
+1. Yes, when editing a existing recipe the multiplier and recipe should be sendt as properties to the component, where we need to calculate the correct values for input/output fields. This is one reason the Recalculate method can accept "null" on its argument, just to "ensure" that all values are correct based on recipe / multiplier.
+
+2. All input/outputs should be editable, since editing one of the inputs/outputs would update all the others. The reason for this is in many scenarios users know only one but not all of the values, for instance if i mine 500 iron ore, but i dont know how many factories or how much output i would get based on the recipe, this calculator would help with that.
+
+3. Yes, it should not be possible to save / update a recipe if the multipler is zero or less. For we can just do a "early return", and not close the modal if the Save method ends up in this scenario - we will spec out a way to add validation feedback to the user later.
+
+4. It should work directly with DbRecipe, but should not work directly with the FactoryRecipe in the modal. We should disconnect the edited values from the factory recipe when editing, so we might have to include a FactoryRecipeId as a property when editing.
+
+5. Callback events to factory manager would be a good idea. When adding, we only need to send back the RecipeId and a multipler (the rest will be calculated as it is now), when editing we will most likely have to include a FactoryRecipeId to know which factory recipe we want to update aswell. But generally we dont need to send back input/outputs since those are based on the Multiplier anyways

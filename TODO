@@ -15,10 +15,6 @@ Add option to disable individual input/output on recipes from being included in 
 
 
 
-Ensure all calculations are done using the Decimal type
-When rendering numbers round to the nearest CONST DECIMAL PLACES
-
-
 
 When creating a new factory, auto select that factory.
 

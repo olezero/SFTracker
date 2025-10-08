@@ -1,6 +1,7 @@
 @using SFTracker.Models
 @using SFTracker.Services
 @using SFTracker.Constants
+@using BlazorBootstrap.Components
 @inject FactoryService FactoryService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -114,6 +115,9 @@
 											<span class="badge bg-info me-2">@factoryRecipe.Multiplier x</span>
 											<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditRecipe(factoryRecipe)">
 												<i class="bi bi-pencil"></i>
+											</button>
+											<button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
+												<i class="bi bi-calculator"></i>
 											</button>
 											<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
 												<i class="bi bi-trash"></i>
@@ -286,9 +290,62 @@
 									<input type="number" class="form-control form-control-sm" @bind="newRecipeMultiplier"
 										   placeholder="1.0" step="0.1" min="0.1">
 								</div>
-								<div class="col-6">
+								<div class="col-6 d-flex gap-2">
 									<button class="btn btn-secondary btn-sm w-100" @onclick="AddRecipe">Add</button>
+									<button class="btn btn-outline-primary btn-sm w-100" @onclick="ShowAdvancedAddRecipeModal">Advanced Add</button>
 								</div>
+@* Advanced Recipe Modals *@
+<RecipeEditorModal @ref="advancedRecipeModal"
+				   Recipes="allRecipes"
+				   IsEditMode="false"
+				   OnSave="OnAdvancedRecipeAdd" />
+
+<RecipeEditorModal @ref="advancedEditRecipeModal"
+				   Recipes="allRecipes"
+				   IsEditMode="true"
+				   OnSave="OnAdvancedRecipeEdit" />
+@code {
+	private RecipeEditorModal? advancedRecipeModal;
+	private RecipeEditorModal? advancedEditRecipeModal;
+
+    private async void ShowAdvancedAddRecipeModal()
+    {
+        if (advancedRecipeModal != null)
+            await advancedRecipeModal.ShowModal();
+    }
+
+    private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
+    {
+        if (advancedEditRecipeModal != null)
+        {
+            // Set the properties for editing mode
+            advancedEditRecipeModal.SelectedRecipe = factoryRecipe.Recipe;
+            advancedEditRecipeModal.InitialMultiplier = factoryRecipe.Multiplier;
+            advancedEditRecipeModal.FactoryRecipeId = factoryRecipe.Id;
+            await advancedEditRecipeModal.ShowModal();
+        }
+    }
+
+	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
+	{
+		if (selectedFactory != null)
+		{
+			await FactoryService.AddFactoryRecipeAsync(selectedFactory.Id, args.recipeId, args.multiplier);
+			await LoadDataAndRefreshBalance();
+		}
+	}
+
+	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
+	{
+		if (selectedFactory != null && args.factoryRecipeId.HasValue)
+		{
+			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.multiplier);
+			await LoadDataAndRefreshBalance();
+		}
+	}
+
+	// ...existing code...
+}
 							</div>
 						</div>
 

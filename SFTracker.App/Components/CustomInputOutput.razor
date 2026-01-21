@@ -3,182 +3,186 @@
 <!-- Custom Input/Output Section -->
 @if (SelectedFactory.Inputs.Any() || SelectedFactory.Outputs.Any())
 {
-    <div class="row mb-4">
-        <!-- Custom Inputs -->
-        <div class="col-md-6">
-            @foreach (var input in SelectedFactory.Inputs.OrderBy(i => i.Part.Name))
-            {
-                <div class="d-flex align-items-center mb-2">
-                    @if (editingInputId == input.Id)
-                    {
-                        <!-- Edit mode -->
-                        <img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2"
-                             style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                        <div class="flex-grow-1 me-2">
-                            <PartSelector Parts="@AllParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-                        </div>
-                        <div class="me-2" style="width: 100px;">
-                            <input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1" min="0.1">
-                        </div>
-                        <button class="btn btn-sm btn-success me-1" @onclick="() => SaveInputEdit(input.Id)">
-                            <i class="bi bi-check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    }
-                    else
-                    {
-                        <!-- View mode -->
-                        <img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-                             style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                        <span class="me-2 flex-grow-1">@input.Part.Name</span>
-                        <span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
-                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    }
-                </div>
-            }
-        </div>
+	<div class="row mb-4">
+		<!-- Custom Inputs -->
+		<div class="col-md-6">
+			@foreach (var input in SelectedFactory.Inputs.OrderBy(i => i.Part.Name))
+			{
+				<div class="d-flex align-items-center mb-2">
+					@if (editingInputId == input.Id)
+					{
+						<!-- Edit mode -->
+						<img src="@editingInputPart?.ImageUrl" alt="@editingInputPart?.Name" class="me-2"
+							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+						<div class="flex-grow-1 me-2">
+							<PartSelector Parts="@AllParts" @bind-SelectedPart="editingInputPart" Placeholder="Select part..."
+								CssClass="form-select-sm" />
+						</div>
+						<div class="me-2" style="width: 100px;">
+							<input type="number" class="form-control form-control-sm" @bind="editingInputAmount" step="0.1"
+								min="0.1">
+						</div>
+						<button class="btn btn-sm btn-success me-1" @onclick="() => SaveInputEdit(input.Id)">
+							<i class="bi bi-check"></i>
+						</button>
+						<button class="btn btn-sm btn-secondary" @onclick="CancelInputEdit">
+							<i class="bi bi-x"></i>
+						</button>
+					}
+					else
+					{
+						<!-- View mode -->
+						<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+						<span class="me-2 flex-grow-1">@input.Part.Name</span>
+						<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
+						<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
+							<i class="bi bi-pencil"></i>
+						</button>
+						<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInput(input.Id)">
+							<i class="bi bi-trash"></i>
+						</button>
+					}
+				</div>
+			}
+		</div>
 
-        <!-- Custom Outputs -->
-        <div class="col-md-6">
-            @foreach (var output in SelectedFactory.Outputs.OrderBy(o => o.Part.Name))
-            {
-                <div class="d-flex align-items-center mb-2">
-                    @if (editingOutputId == output.Id)
-                    {
-                        <!-- Edit mode -->
-                        <img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2"
-                             style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                        <div class="flex-grow-1 me-2">
-                            <PartSelector Parts="@AllParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..." CssClass="form-select-sm" />
-                        </div>
-                        <div class="me-2" style="width: 100px;">
-                            <input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1" min="0.1">
-                        </div>
-                        <button class="btn btn-sm btn-success me-1" @onclick="() => SaveOutputEdit(output.Id)">
-                            <i class="bi bi-check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    }
-                    else
-                    {
-                        <!-- View mode -->
-                        <img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-                             style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                        <span class="me-2 flex-grow-1">@output.Part.Name</span>
-                        <span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
-                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    }
-                </div>
-            }
-        </div>
-    </div>
+		<!-- Custom Outputs -->
+		<div class="col-md-6">
+			@foreach (var output in SelectedFactory.Outputs.OrderBy(o => o.Part.Name))
+			{
+				<div class="d-flex align-items-center mb-2">
+					@if (editingOutputId == output.Id)
+					{
+						<!-- Edit mode -->
+						<img src="@editingOutputPart?.ImageUrl" alt="@editingOutputPart?.Name" class="me-2"
+							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+						<div class="flex-grow-1 me-2">
+							<PartSelector Parts="@AllParts" @bind-SelectedPart="editingOutputPart" Placeholder="Select part..."
+								CssClass="form-select-sm" />
+						</div>
+						<div class="me-2" style="width: 100px;">
+							<input type="number" class="form-control form-control-sm" @bind="editingOutputAmount" step="0.1"
+								min="0.1">
+						</div>
+						<button class="btn btn-sm btn-success me-1" @onclick="() => SaveOutputEdit(output.Id)">
+							<i class="bi bi-check"></i>
+						</button>
+						<button class="btn btn-sm btn-secondary" @onclick="CancelOutputEdit">
+							<i class="bi bi-x"></i>
+						</button>
+					}
+					else
+					{
+						<!-- View mode -->
+						<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+						<span class="me-2 flex-grow-1">@output.Part.Name</span>
+						<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
+						<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
+							<i class="bi bi-pencil"></i>
+						</button>
+						<button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveOutput(output.Id)">
+							<i class="bi bi-trash"></i>
+						</button>
+					}
+				</div>
+			}
+		</div>
+	</div>
 }
 
 @code {
-    [Parameter] public Factory SelectedFactory { get; set; } = null!;
-    [Parameter] public List<DbPart> AllParts { get; set; } = new();
-    [Parameter] public EventCallback OnInputOutputChanged { get; set; }
+	[Parameter] public Factory SelectedFactory { get; set; } = null!;
+	[Parameter] public List<DbPart> AllParts { get; set; } = new();
+	[Parameter] public EventCallback OnInputOutputChanged { get; set; }
 
-    // Edit mode fields for inputs
-    private int? editingInputId = null;
-    private DbPart? editingInputPart;
-    private double editingInputAmount = 0;
+	// Edit mode fields for inputs
+	private int? editingInputId = null;
+	private DbPart? editingInputPart;
+	private double editingInputAmount = 0;
 
-    // Edit mode fields for outputs
-    private int? editingOutputId = null;
-    private DbPart? editingOutputPart;
-    private double editingOutputAmount = 0;
+	// Edit mode fields for outputs
+	private int? editingOutputId = null;
+	private DbPart? editingOutputPart;
+	private double editingOutputAmount = 0;
 
-    private void StartEditInput(FactoryInput input)
-    {
-        CancelAllEdits();
-        editingInputId = input.Id;
-        editingInputPart = input.Part;
-        editingInputAmount = input.AmountPerMinute;
-    }
+	private void StartEditInput(FactoryInput input)
+	{
+		CancelAllEdits();
+		editingInputId = input.Id;
+		editingInputPart = input.Part;
+		editingInputAmount = input.AmountPerMinute;
+	}
 
-    private void StartEditOutput(FactoryOutput output)
-    {
-        CancelAllEdits();
-        editingOutputId = output.Id;
-        editingOutputPart = output.Part;
-        editingOutputAmount = output.AmountPerMinute;
-    }
+	private void StartEditOutput(FactoryOutput output)
+	{
+		CancelAllEdits();
+		editingOutputId = output.Id;
+		editingOutputPart = output.Part;
+		editingOutputAmount = output.AmountPerMinute;
+	}
 
-    private async Task SaveInputEdit(int inputId)
-    {
-        if (editingInputPart != null && editingInputAmount > 0)
-        {
-            // Remove the old input
-            await FactoryService.RemoveFactoryInputAsync(inputId);
-            // Add the new input with updated values
-            await FactoryService.AddFactoryInputAsync(SelectedFactory.Id, editingInputPart.Id, editingInputAmount);
-            await OnInputOutputChanged.InvokeAsync();
-            CancelInputEdit();
-        }
-    }
+	private async Task SaveInputEdit(int inputId)
+	{
+		if (editingInputPart != null && editingInputAmount > 0)
+		{
+			// Remove the old input
+			await FactoryService.RemoveFactoryInputAsync(inputId);
+			// Add the new input with updated values
+			await FactoryService.AddFactoryInputAsync(SelectedFactory.Id, editingInputPart.Id, editingInputAmount);
+			await OnInputOutputChanged.InvokeAsync();
+			CancelInputEdit();
+		}
+	}
 
-    private async Task SaveOutputEdit(int outputId)
-    {
-        if (editingOutputPart != null && editingOutputAmount > 0)
-        {
-            // Remove the old output
-            await FactoryService.RemoveFactoryOutputAsync(outputId);
-            // Add the new output with updated values
-            await FactoryService.AddFactoryOutputAsync(SelectedFactory.Id, editingOutputPart.Id, editingOutputAmount);
-            await OnInputOutputChanged.InvokeAsync();
-            CancelOutputEdit();
-        }
-    }
+	private async Task SaveOutputEdit(int outputId)
+	{
+		if (editingOutputPart != null && editingOutputAmount > 0)
+		{
+			// Remove the old output
+			await FactoryService.RemoveFactoryOutputAsync(outputId);
+			// Add the new output with updated values
+			await FactoryService.AddFactoryOutputAsync(SelectedFactory.Id, editingOutputPart.Id, editingOutputAmount);
+			await OnInputOutputChanged.InvokeAsync();
+			CancelOutputEdit();
+		}
+	}
 
-    private void CancelInputEdit()
-    {
-        editingInputId = null;
-        editingInputPart = null;
-        editingInputAmount = 0;
-    }
+	private void CancelInputEdit()
+	{
+		editingInputId = null;
+		editingInputPart = null;
+		editingInputAmount = 0;
+	}
 
-    private void CancelOutputEdit()
-    {
-        editingOutputId = null;
-        editingOutputPart = null;
-        editingOutputAmount = 0;
-    }
+	private void CancelOutputEdit()
+	{
+		editingOutputId = null;
+		editingOutputPart = null;
+		editingOutputAmount = 0;
+	}
 
-    private async Task RemoveInput(int inputId)
-    {
-        await FactoryService.RemoveFactoryInputAsync(inputId);
-        await OnInputOutputChanged.InvokeAsync();
-    }
+	private async Task RemoveInput(int inputId)
+	{
+		await FactoryService.RemoveFactoryInputAsync(inputId);
+		await OnInputOutputChanged.InvokeAsync();
+	}
 
-    private async Task RemoveOutput(int outputId)
-    {
-        await FactoryService.RemoveFactoryOutputAsync(outputId);
-        await OnInputOutputChanged.InvokeAsync();
-    }
+	private async Task RemoveOutput(int outputId)
+	{
+		await FactoryService.RemoveFactoryOutputAsync(outputId);
+		await OnInputOutputChanged.InvokeAsync();
+	}
 
-    private void CancelAllEdits()
-    {
-        CancelInputEdit();
-        CancelOutputEdit();
-    }
+	private void CancelAllEdits()
+	{
+		CancelInputEdit();
+		CancelOutputEdit();
+	}
 
-    public void CancelEdits()
-    {
-        CancelAllEdits();
-    }
+	public void CancelEdits()
+	{
+		CancelAllEdits();
+	}
 }

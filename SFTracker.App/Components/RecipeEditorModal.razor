@@ -4,196 +4,200 @@
 @using BlazorBootstrap.Components
 @inject IJSRuntime JSRuntime
 
-<Modal @ref="modalRef" Title="@(IsEditMode ? "Edit Factory Recipe" : "Add Factory Recipe")" Size="ModalSize.ExtraLarge" >
-    <BodyTemplate>
-        <div class="mb-3">
-            <label for="recipeSelect" class="form-label">Recipe</label>
-            <select id="recipeSelect" class="form-select form-select-sm" @onchange="OnRecipeSelect">
-                <option value="">Select a recipe...</option>
-                @foreach (var recipe in Recipes)
-                {
-                    <option value="@recipe.Id" selected="@(CurrentRecipe?.Id == recipe.Id)">@recipe.Name</option>
-                }
-            </select>
-        </div>
-        @if (CurrentRecipe != null)
-        {
-            <div class="mb-3">
-                <div class="d-flex align-items-center">
-                    <label class="form-label mb-0 flex-grow-1">Multiplier</label>
-                    <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
-                           value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <h6>Inputs</h6>
-                    @foreach (var input in CurrentRecipe.Inputs)
-                    {
-                        <div class="d-flex align-items-center mb-2">
-                            <img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2" 
-                                 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                            <span class="flex-grow-1">@input.Part.Name</span>
-                            <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
-                                   value="@FormatNumber(InputValues[input.Id])" 
-                                   @oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
-                        </div>
-                    }
-                </div>
-                <div class="col">
-                    <h6>Outputs</h6>
-                    @foreach (var output in CurrentRecipe.Outputs)
-                    {
-                        <div class="d-flex align-items-center mb-2">
-                            <img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2" 
-                                 style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                            <span class="flex-grow-1">@output.Part.Name</span>
-                            <input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;" 
-                                   value="@FormatNumber(OutputValues[output.Id])" 
-                                   @oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-    </BodyTemplate>
-    <FooterTemplate>
-        <Button Color="ButtonColor.Secondary" @onclick="HideModal">Cancel</Button>
-        <Button Color="ButtonColor.Primary" @onclick="Save" Disabled="@(Multiplier <= 0)">@((IsEditMode ? "Save" : "Add"))</Button>
-    </FooterTemplate>
+<Modal @ref="modalRef" Title="@(IsEditMode ? "Edit Factory Recipe" : "Add Factory Recipe")" Size="ModalSize.ExtraLarge">
+	<BodyTemplate>
+		<div class="mb-3">
+			<label for="recipeSelect" class="form-label">Recipe</label>
+			<select id="recipeSelect" class="form-select form-select-sm" @onchange="OnRecipeSelect">
+				<option value="">Select a recipe...</option>
+				@foreach (var recipe in Recipes)
+				{
+					<option value="@recipe.Id" selected="@(CurrentRecipe?.Id == recipe.Id)">@recipe.Name</option>
+				}
+			</select>
+		</div>
+		@if (CurrentRecipe != null)
+		{
+			<div class="mb-3">
+				<div class="d-flex align-items-center">
+					<label class="form-label mb-0 flex-grow-1">Multiplier</label>
+					<input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;"
+						value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
+				</div>
+			</div>
+			<div class="row">
+				<div class="col">
+					<h6>Inputs</h6>
+					@foreach (var input in CurrentRecipe.Inputs)
+					{
+						<div class="d-flex align-items-center mb-2">
+							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+							<span class="flex-grow-1">@input.Part.Name</span>
+							<input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;"
+								value="@FormatNumber(InputValues[input.Id])"
+								@oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
+						</div>
+					}
+				</div>
+				<div class="col">
+					<h6>Outputs</h6>
+					@foreach (var output in CurrentRecipe.Outputs)
+					{
+						<div class="d-flex align-items-center mb-2">
+							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+							<span class="flex-grow-1">@output.Part.Name</span>
+							<input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;"
+								value="@FormatNumber(OutputValues[output.Id])"
+								@oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
+						</div>
+					}
+				</div>
+			</div>
+		}
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="Save" Disabled="@(Multiplier <= 0)">@((IsEditMode ? "Save" :
+						"Add"))</Button>
+	</FooterTemplate>
 </Modal>
 
 @code {
-    [Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = new List<DbRecipe>();
-    [Parameter] public bool IsEditMode { get; set; } = false;
-    [Parameter] public int? FactoryRecipeId { get; set; }
-    [Parameter] public DbRecipe? SelectedRecipe { get; set; }
-    [Parameter] public double? InitialMultiplier { get; set; }
-    [Parameter] public EventCallback<(int recipeId, double multiplier, int? factoryRecipeId)> OnSave { get; set; }
+	[Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = new List<DbRecipe>();
+	[Parameter] public bool IsEditMode { get; set; } = false;
+	[Parameter] public int? FactoryRecipeId { get; set; }
+	[Parameter] public DbRecipe? SelectedRecipe { get; set; }
+	[Parameter] public double? InitialMultiplier { get; set; }
+	[Parameter] public EventCallback<(int recipeId, double multiplier, int? factoryRecipeId)> OnSave { get; set; }
 
-    private Modal modalRef = default!;
-    private DbRecipe? CurrentRecipe;
-    private double Multiplier = 1.0;
-    private Dictionary<int, double> InputValues = new();
-    private Dictionary<int, double> OutputValues = new();
+	private Modal modalRef = default!;
+	private DbRecipe? CurrentRecipe;
+	private double Multiplier = 1.0;
+	private Dictionary<int, double> InputValues = new();
+	private Dictionary<int, double> OutputValues = new();
 
-    protected override void OnParametersSet()
-    {
-        if (IsEditMode && SelectedRecipe != null && InitialMultiplier.HasValue)
-        {
-            CurrentRecipe = SelectedRecipe;
-            Multiplier = InitialMultiplier.Value;
-            PopulateFieldsFromMultiplier();
-        }
-        else if (!IsEditMode)
-        {
-            Multiplier = 1.0;
-			if(SelectedRecipe != null) {
+	protected override void OnParametersSet()
+	{
+		if (IsEditMode && SelectedRecipe != null && InitialMultiplier.HasValue)
+		{
+			CurrentRecipe = SelectedRecipe;
+			Multiplier = InitialMultiplier.Value;
+			PopulateFieldsFromMultiplier();
+		}
+		else if (!IsEditMode)
+		{
+			Multiplier = 1.0;
+			if (SelectedRecipe != null)
+			{
 				CurrentRecipe = SelectedRecipe;
 				PopulateFieldsFromMultiplier();
-			} else {
-            	CurrentRecipe = null;
-            	InputValues.Clear();
-            	OutputValues.Clear();
 			}
-        }
-    }
+			else
+			{
+				CurrentRecipe = null;
+				InputValues.Clear();
+				OutputValues.Clear();
+			}
+		}
+	}
 
-    private void OnRecipeSelect(ChangeEventArgs e)
-    {
-        var selectedId = int.TryParse(e.Value?.ToString(), out var id) ? id : (int?)null;
-        CurrentRecipe = Recipes.FirstOrDefault(r => r.Id == selectedId);
-        Multiplier = 1.0;
-        PopulateFieldsFromMultiplier();
-    }
+	private void OnRecipeSelect(ChangeEventArgs e)
+	{
+		var selectedId = int.TryParse(e.Value?.ToString(), out var id) ? id : (int?)null;
+		CurrentRecipe = Recipes.FirstOrDefault(r => r.Id == selectedId);
+		Multiplier = 1.0;
+		PopulateFieldsFromMultiplier();
+	}
 
-    private void PopulateFieldsFromMultiplier()
-    {
-        InputValues.Clear();
-        OutputValues.Clear();
-        if (CurrentRecipe != null)
-        {
-            foreach (var input in CurrentRecipe.Inputs)
-                InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
-            foreach (var output in CurrentRecipe.Outputs)
-                OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
-        }
-    }
+	private void PopulateFieldsFromMultiplier()
+	{
+		InputValues.Clear();
+		OutputValues.Clear();
+		if (CurrentRecipe != null)
+		{
+			foreach (var input in CurrentRecipe.Inputs)
+				InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
+			foreach (var output in CurrentRecipe.Outputs)
+				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+		}
+	}
 
-    private void OnInputOutputChange(int id, bool isInput, ChangeEventArgs e)
-    {
-        if (CurrentRecipe == null) return;
-        var newValue = double.TryParse(e.Value?.ToString(), out var v) ? v : 0;
-        double baseValue = 1;
-        if (isInput)
-        {
-            var input = CurrentRecipe.Inputs.FirstOrDefault(i => i.Id == id);
-            if (input == null || input.Quantity == 0) return;
-            baseValue = input.GetQuantityPerMinute(1.0);
-            Multiplier = newValue / baseValue;
-        }
-        else
-        {
-            var output = CurrentRecipe.Outputs.FirstOrDefault(o => o.Id == id);
-            if (output == null || output.Quantity == 0) return;
-            baseValue = output.GetQuantityPerMinute(1.0);
-            Multiplier = newValue / baseValue;
-        }
-        // Update all other fields
-        foreach (var input in CurrentRecipe.Inputs)
-        {
-            if (!(isInput && input.Id == id))
-                InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
-            else
-                InputValues[input.Id] = newValue;
-        }
-        foreach (var output in CurrentRecipe.Outputs)
-        {
-            if (!(!isInput && output.Id == id))
-                OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
-            else
-                OutputValues[output.Id] = newValue;
-        }
-    }
+	private void OnInputOutputChange(int id, bool isInput, ChangeEventArgs e)
+	{
+		if (CurrentRecipe == null) return;
+		var newValue = double.TryParse(e.Value?.ToString(), out var v) ? v : 0;
+		double baseValue = 1;
+		if (isInput)
+		{
+			var input = CurrentRecipe.Inputs.FirstOrDefault(i => i.Id == id);
+			if (input == null || input.Quantity == 0) return;
+			baseValue = input.GetQuantityPerMinute(1.0);
+			Multiplier = newValue / baseValue;
+		}
+		else
+		{
+			var output = CurrentRecipe.Outputs.FirstOrDefault(o => o.Id == id);
+			if (output == null || output.Quantity == 0) return;
+			baseValue = output.GetQuantityPerMinute(1.0);
+			Multiplier = newValue / baseValue;
+		}
+		// Update all other fields
+		foreach (var input in CurrentRecipe.Inputs)
+		{
+			if (!(isInput && input.Id == id))
+				InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
+			else
+				InputValues[input.Id] = newValue;
+		}
+		foreach (var output in CurrentRecipe.Outputs)
+		{
+			if (!(!isInput && output.Id == id))
+				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+			else
+				OutputValues[output.Id] = newValue;
+		}
+	}
 
-    private void OnMultiplierChange(ChangeEventArgs e)
-    {
-        if (CurrentRecipe == null) return;
-        var newMultiplier = double.TryParse(e.Value?.ToString(), out var v) ? v : 0;
-        Multiplier = newMultiplier;
-        
-        // Update all input and output fields based on the new multiplier
-        foreach (var input in CurrentRecipe.Inputs)
-            InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
-        foreach (var output in CurrentRecipe.Outputs)
-            OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
-    }
+	private void OnMultiplierChange(ChangeEventArgs e)
+	{
+		if (CurrentRecipe == null) return;
+		var newMultiplier = double.TryParse(e.Value?.ToString(), out var v) ? v : 0;
+		Multiplier = newMultiplier;
 
-    private async void HideModal()
-    {
+		// Update all input and output fields based on the new multiplier
+		foreach (var input in CurrentRecipe.Inputs)
+			InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
+		foreach (var output in CurrentRecipe.Outputs)
+			OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+	}
+
+	private async void HideModal()
+	{
 		// Clear values when hiding
 		CurrentRecipe = null;
 		InputValues.Clear();
 		OutputValues.Clear();
 		Multiplier = 1.0;
-        await modalRef.HideAsync();
-    }
+		await modalRef.HideAsync();
+	}
 
-    public async Task ShowModal()
-    {
-        await modalRef.ShowAsync();
-    }
+	public async Task ShowModal()
+	{
+		await modalRef.ShowAsync();
+	}
 
-    private async Task Save()
-    {
-        if (CurrentRecipe == null || Multiplier <= 0) return;
-        await OnSave.InvokeAsync((CurrentRecipe.Id, Multiplier, IsEditMode ? FactoryRecipeId : null));
-        HideModal();
-    }
+	private async Task Save()
+	{
+		if (CurrentRecipe == null || Multiplier <= 0) return;
+		await OnSave.InvokeAsync((CurrentRecipe.Id, Multiplier, IsEditMode ? FactoryRecipeId : null));
+		HideModal();
+	}
 
-    private string FormatNumber(double value)
-    {
-        // Round to 4 decimal places and remove trailing zeros
-        return Math.Round(value, 4).ToString("0.####");
-    }
+	private string FormatNumber(double value)
+	{
+		// Round to 4 decimal places and remove trailing zeros
+		return Math.Round(value, 4).ToString("0.####");
+	}
 }

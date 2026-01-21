@@ -2,84 +2,75 @@
 
 @if (SelectedFactory != null)
 {
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">@SelectedFactory.Name</h5>
-            <div>
-                <button class="btn btn-secondary btn-sm me-2" @onclick="ShowUpdateFactoryModal">
-                    <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button class="btn btn-secondary btn-sm" @onclick="DeleteSelectedFactory">
-                    <i class="bi bi-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            <!-- Table Headers -->
-            <div class="row mb-3 border-bottom pb-2">
-                <div class="col-md-6">
-                    <h5 class="mb-0 text-center">Inputs</h5>
-                </div>
-                <div class="col-md-6">
-                    <h5 class="mb-0 text-center">Outputs</h5>
-                </div>
-            </div>
+	<div class="card">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">@SelectedFactory.Name</h5>
+			<div>
+				<button class="btn btn-secondary btn-sm me-2" @onclick="ShowUpdateFactoryModal">
+					<i class="bi bi-pencil"></i> Edit
+				</button>
+				<button class="btn btn-secondary btn-sm" @onclick="DeleteSelectedFactory">
+					<i class="bi bi-trash"></i> Delete
+				</button>
+			</div>
+		</div>
+		<div class="card-body">
+			<!-- Table Headers -->
+			<div class="row mb-3 border-bottom pb-2">
+				<div class="col-md-6">
+					<h5 class="mb-0 text-center">Inputs</h5>
+				</div>
+				<div class="col-md-6">
+					<h5 class="mb-0 text-center">Outputs</h5>
+				</div>
+			</div>
 
-            <RecipeSection SelectedFactory="@SelectedFactory" 
-                          AllParts="@AllParts"
-                          OnRecipeChanged="@OnRecipeChanged" />
+			<RecipeSection SelectedFactory="@SelectedFactory" AllParts="@AllParts" OnRecipeChanged="@OnRecipeChanged" />
 
-            <CustomInputOutput SelectedFactory="@SelectedFactory"
-                              AllParts="@AllParts" 
-                              OnInputOutputChanged="@OnInputOutputChanged" />
-
-            <hr />
-
-            <AddForms SelectedFactory="@SelectedFactory"
-                     AllRecipes="@AllRecipes"
-                     AllParts="@AllParts"
-                     OnRecipeAdded="@OnRecipeAdded"
-                     OnInputAdded="@OnInputAdded"
-                     OnOutputAdded="@OnOutputAdded" />
-        </div>
-    </div>
+			<CustomInputOutput SelectedFactory="@SelectedFactory" AllParts="@AllParts"
+				OnInputOutputChanged="@OnInputOutputChanged" />
+			<hr />
+			<AddForms SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts"
+				OnRecipeAdded="@OnRecipeAdded" OnInputAdded="@OnInputAdded" OnOutputAdded="@OnOutputAdded" />
+		</div>
+	</div>
 }
 else
 {
-    <div class="card">
-        <div class="card-body text-center text-muted">
-            <h5>Select a factory to view details</h5>
-            <p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>
-        </div>
-    </div>
+	<div class="card">
+		<div class="card-body text-center text-muted">
+			<h5>Select a factory to view details</h5>
+			<p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>
+		</div>
+	</div>
 }
 
 @code {
-    [Parameter] public Factory? SelectedFactory { get; set; }
-    [Parameter] public List<DbPart> AllParts { get; set; } = new();
-    [Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
-    [Parameter] public EventCallback OnShowUpdateFactoryModal { get; set; }
-    [Parameter] public EventCallback OnDeleteSelectedFactory { get; set; }
-    [Parameter] public EventCallback OnRecipeChanged { get; set; }
-    [Parameter] public EventCallback OnInputOutputChanged { get; set; }
-    [Parameter] public EventCallback OnRecipeAdded { get; set; }
-    [Parameter] public EventCallback OnInputAdded { get; set; }
-    [Parameter] public EventCallback OnOutputAdded { get; set; }
+	[Parameter] public Factory? SelectedFactory { get; set; }
+	[Parameter] public List<DbPart> AllParts { get; set; } = new();
+	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
+	[Parameter] public EventCallback OnShowUpdateFactoryModal { get; set; }
+	[Parameter] public EventCallback OnDeleteSelectedFactory { get; set; }
+	[Parameter] public EventCallback OnRecipeChanged { get; set; }
+	[Parameter] public EventCallback OnInputOutputChanged { get; set; }
+	[Parameter] public EventCallback OnRecipeAdded { get; set; }
+	[Parameter] public EventCallback OnInputAdded { get; set; }
+	[Parameter] public EventCallback OnOutputAdded { get; set; }
 
-    private async Task ShowUpdateFactoryModal()
-    {
-        await OnShowUpdateFactoryModal.InvokeAsync();
-    }
+	private async Task ShowUpdateFactoryModal()
+	{
+		await OnShowUpdateFactoryModal.InvokeAsync();
+	}
 
-    private async Task DeleteSelectedFactory()
-    {
-        if (SelectedFactory != null)
-        {
-            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{SelectedFactory.Name}'?");
-            if (confirmed)
-            {
-                await OnDeleteSelectedFactory.InvokeAsync();
-            }
-        }
-    }
+	private async Task DeleteSelectedFactory()
+	{
+		if (SelectedFactory != null)
+		{
+			var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{SelectedFactory.Name}'?");
+			if (confirmed)
+			{
+				await OnDeleteSelectedFactory.InvokeAsync();
+			}
+		}
+	}
 }

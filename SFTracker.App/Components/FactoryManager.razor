@@ -6,169 +6,156 @@
 @implements IDisposable
 
 <style>
-    .sortable-factory-item {
-        cursor: pointer;
-    }
+	.sortable-factory-item {
+		cursor: pointer;
+	}
 
-    /* Target the parent list-group-item when the child has the selected class */
-    .list-group-item:has(.sortable-factory-item.selected) {
-        background-color: var(--bs-primary) !important;
-        color: white !important;
-        border-color: var(--bs-primary) !important;
-    }
+	/* Target the parent list-group-item when the child has the selected class */
+	.list-group-item:has(.sortable-factory-item.selected) {
+		background-color: var(--bs-primary) !important;
+		color: white !important;
+		border-color: var(--bs-primary) !important;
+	}
 
-    /* Alternative approach using data attributes if :has() isn't supported */
-    .list-group-item[data-selected="True"] {
-        background-color: var(--bs-primary) !important;
-        color: white !important;
-        border-color: var(--bs-primary) !important;
-    }
+	/* Alternative approach using data attributes if :has() isn't supported */
+	.list-group-item[data-selected="True"] {
+		background-color: var(--bs-primary) !important;
+		color: white !important;
+		border-color: var(--bs-primary) !important;
+	}
 </style>
 
 <div class="row">
-    <div class="col-md-4">
-        <FactoryList @ref="factoryListComponent"
-                     Factories="@factories" 
-                     SelectedFactory="@selectedFactory"
-                     SelectedFactoryChanged="@OnFactorySelected"
-                     OnFactoryListChanged="@OnFactoryListChanged"
-                     OnFactoryOperation="@OnFactoryOperation" />
-    </div>
+	<div class="col-md-4">
+		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory"
+			SelectedFactoryChanged="@OnFactorySelected" OnFactoryListChanged="@OnFactoryListChanged"
+			OnFactoryOperation="@OnFactoryOperation" />
+	</div>
 
-    <div class="col-md-8">
-        <FactoryDetail SelectedFactory="@selectedFactory"
-                       AllParts="@allParts"
-                       AllRecipes="@allRecipes"
-                       OnShowUpdateFactoryModal="@ShowUpdateFactoryModal"
-                       OnDeleteSelectedFactory="@DeleteSelectedFactory"
-                       OnRecipeChanged="@LoadDataAndRefreshBalance"
-                       OnInputOutputChanged="@LoadDataAndRefreshBalance"
-                       OnRecipeAdded="@LoadDataAndRefreshBalance"
-                       OnInputAdded="@LoadDataAndRefreshBalance"
-                       OnOutputAdded="@LoadDataAndRefreshBalance" />
-    </div>
+	<div class="col-md-8">
+		<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes"
+			OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
+			OnRecipeChanged="@LoadDataAndRefreshBalance" OnInputOutputChanged="@LoadDataAndRefreshBalance"
+			OnRecipeAdded="@LoadDataAndRefreshBalance" OnInputAdded="@LoadDataAndRefreshBalance"
+			OnOutputAdded="@LoadDataAndRefreshBalance" />
+	</div>
 </div>
 
-<BootstrapSelect 
-	TItem="DbRecipe" 
-	Data="@allRecipes" 
-	TextField="@((r) => r.Name)" 
-	ValueField="@((r) => r.Id.ToString())" 
+<BootstrapSelect TItem="DbRecipe" Data="@allRecipes" TextField="@((r) => r.Name)" ValueField="@((r) => r.Id.ToString())"
 	TType="string"></BootstrapSelect>
 
- 
- @*  https://demos.blazorbootstrap.com/form/autocomplete *@
-<AutoComplete 
-	TItem="DbPart"
-	PropertyName="Name"
-	DataProvider="PartDataProvider"
-	></AutoComplete>
+
+@*  https://demos.blazorbootstrap.com/form/autocomplete *@
+<AutoComplete TItem="DbPart" PropertyName="Name" DataProvider="PartDataProvider"></AutoComplete>
 
 @code {
-	private async Task<AutoCompleteDataProviderResult<DbPart>> PartDataProvider(AutoCompleteDataProviderRequest<DbPart> request) {
-		return await Task.FromResult(new AutoCompleteDataProviderResult<DbPart>() {
+	private async Task<AutoCompleteDataProviderResult<DbPart>> PartDataProvider(AutoCompleteDataProviderRequest<DbPart>
+	request)
+	{
+		return await Task.FromResult(new AutoCompleteDataProviderResult<DbPart>()
+		{
 			Data = allParts.AsEnumerable(),
 			TotalCount = allParts.Count
 		});
 	}
 
-    private ResourceBalance? ResourceBalanceComponent { get; set; }
-    private FactoryList? factoryListComponent;
-    
-    private List<Factory> factories = new();
-    private List<DbPart> allParts = new();
-    private List<DbRecipe> allRecipes = new();
-    private Factory? selectedFactory;
+	private ResourceBalance? ResourceBalanceComponent { get; set; }
+	private FactoryList? factoryListComponent;
 
-    public void SetResourceBalanceComponent(ResourceBalance component)
-    {
-        ResourceBalanceComponent = component;
-    }
+	private List<Factory> factories = new();
+	private List<DbPart> allParts = new();
+	private List<DbRecipe> allRecipes = new();
+	private Factory? selectedFactory;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
+	public void SetResourceBalanceComponent(ResourceBalance component)
+	{
+		ResourceBalanceComponent = component;
+	}
 
-    private async Task LoadData()
-    {
-        factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
-        allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
-        allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadData();
+	}
 
-        // Refresh selected factory if it exists
-        if (selectedFactory != null)
-        {
-            selectedFactory = await FactoryService.GetFactoryByIdAsync(selectedFactory.Id).ConfigureAwait(false);
-        }
-    }
+	private async Task LoadData()
+	{
+		factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
+		allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
 
-    private async Task LoadDataAndRefreshBalance()
-    {
-        await LoadData();
-        await TriggerBalanceRefresh();
-    }
+		// Refresh selected factory if it exists
+		if (selectedFactory != null)
+		{
+			selectedFactory = await FactoryService.GetFactoryByIdAsync(selectedFactory.Id).ConfigureAwait(false);
+		}
+	}
 
-    private async Task TriggerBalanceRefresh()
-    {
-        if (ResourceBalanceComponent != null)
-        {
-            await ResourceBalanceComponent.RefreshBalanceDebounced();
-        }
-    }
+	private async Task LoadDataAndRefreshBalance()
+	{
+		await LoadData();
+		await TriggerBalanceRefresh();
+	}
 
-    private async Task OnFactorySelected(Factory? factory)
-    {
+	private async Task TriggerBalanceRefresh()
+	{
+		if (ResourceBalanceComponent != null)
+		{
+			await ResourceBalanceComponent.RefreshBalanceDebounced();
+		}
+	}
+
+	private async Task OnFactorySelected(Factory? factory)
+	{
 		await Task.CompletedTask;
-        selectedFactory = factory;
-        StateHasChanged();
-    }
+		selectedFactory = factory;
+		StateHasChanged();
+	}
 
-    private async Task OnFactoryListChanged()
-    {
-        // Update sorting values on factories
-        for (int i = 0; i < factories.Count; i++)
-        {
-            factories[i].Sorting = i;
-            await FactoryService.UpdateFactoryAsync(factories[i]);
-        }
-        await TriggerBalanceRefresh();
-    }
+	private async Task OnFactoryListChanged()
+	{
+		// Update sorting values on factories
+		for (int i = 0; i < factories.Count; i++)
+		{
+			factories[i].Sorting = i;
+			await FactoryService.UpdateFactoryAsync(factories[i]);
+		}
+		await TriggerBalanceRefresh();
+	}
 
-    private async Task OnFactoryOperation((Factory factory, string operation) args)
-    {
-        switch (args.operation)
-        {
-            case "create":
-                await FactoryService.CreateFactoryAsync(args.factory.Name);
-                break;
-            case "update":
-                await FactoryService.UpdateFactoryAsync(args.factory);
-                break;
-            case "delete":
-                await FactoryService.DeleteFactoryAsync(args.factory.Id);
-                selectedFactory = null;
-                break;
-        }
-        await LoadDataAndRefreshBalance();
-    }
+	private async Task OnFactoryOperation((Factory factory, string operation) args)
+	{
+		switch (args.operation)
+		{
+			case "create":
+				await FactoryService.CreateFactoryAsync(args.factory.Name);
+				break;
+			case "update":
+				await FactoryService.UpdateFactoryAsync(args.factory);
+				break;
+			case "delete":
+				await FactoryService.DeleteFactoryAsync(args.factory.Id);
+				selectedFactory = null;
+				break;
+		}
+		await LoadDataAndRefreshBalance();
+	}
 
-    private void ShowUpdateFactoryModal()
-    {
-        factoryListComponent?.ShowUpdateFactoryModal();
-    }
+	private void ShowUpdateFactoryModal()
+	{
+		factoryListComponent?.ShowUpdateFactoryModal();
+	}
 
-    private async Task DeleteSelectedFactory()
-    {
-        if (factoryListComponent != null)
-        {
-            await factoryListComponent.DeleteSelectedFactory();
-        }
-    }
+	private async Task DeleteSelectedFactory()
+	{
+		if (factoryListComponent != null)
+		{
+			await factoryListComponent.DeleteSelectedFactory();
+		}
+	}
 
-    public void Dispose()
-    {
-        // Clean up component references to prevent memory leaks
-        ResourceBalanceComponent = null;
-    }
+	public void Dispose()
+	{
+		// Clean up component references to prevent memory leaks
+		ResourceBalanceComponent = null;
+	}
 }

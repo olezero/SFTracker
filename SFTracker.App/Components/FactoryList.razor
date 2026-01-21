@@ -1,170 +1,173 @@
 @inject IJSRuntime JSRuntime
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Factories</h5>
-        <button class="btn btn-secondary btn-sm" @onclick="ShowCreateFactoryModal">
-            <i class="bi bi-plus"></i> Add Factory
-        </button>
-    </div>
-    <div class="card-body">
-        @if (Factories.Any())
-        {
-            <SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
-                <ItemTemplate>
-                    <div class="d-flex w-100 justify-content-between sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
-                        @onclick="() => SelectFactory(factory)"
-                        data-factory-id="@factory.Id"
-                        data-selected="@(SelectedFactory?.Id == factory.Id)">
-                        <h6 class="mb-1">@factory.Name</h6>
-                        <small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
-                    </div>
-                </ItemTemplate>
-            </SortableList>
-        }
-        else
-        {
-            <p class="text-muted">No factories yet. Create your first factory!</p>
-        }
-    </div>
+	<div class="card-header d-flex justify-content-between align-items-center">
+		<h5 class="mb-0">Factories</h5>
+		<button class="btn btn-secondary btn-sm" @onclick="ShowCreateFactoryModal">
+			<i class="bi bi-plus"></i> Add Factory
+		</button>
+	</div>
+	<div class="card-body">
+		@if (Factories.Any())
+		{
+			<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
+				<ItemTemplate>
+					<div class="d-flex w-100 justify-content-between sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
+						@onclick="() => SelectFactory(factory)" data-factory-id="@factory.Id"
+						data-selected="@(SelectedFactory?.Id == factory.Id)">
+						<h6 class="mb-1">@factory.Name</h6>
+						<small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
+					</div>
+				</ItemTemplate>
+			</SortableList>
+		}
+		else
+		{
+			<p class="text-muted">No factories yet. Create your first factory!</p>
+		}
+	</div>
 </div>
 
 <!-- Create Factory Modal -->
 <Modal @ref="createFactoryModal" Title="Create New Factory">
-    <BodyTemplate>
-        <div class="mb-3">
-            <label for="factoryName" class="form-label">Factory Name</label>
-            <input type="text" class="form-control" id="factoryName" @bind="newFactoryName" placeholder="Enter factory name">
-        </div>
-    </BodyTemplate>
-    <FooterTemplate>
-        <Button Color="ButtonColor.Secondary" @onclick="HideCreateFactoryModal">Cancel</Button>
-        <Button Color="ButtonColor.Primary" @onclick="CreateFactory">Create Factory</Button>
-    </FooterTemplate>
+	<BodyTemplate>
+		<div class="mb-3">
+			<label for="factoryName" class="form-label">Factory Name</label>
+			<input type="text" class="form-control" id="factoryName" @bind="newFactoryName"
+				placeholder="Enter factory name">
+		</div>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideCreateFactoryModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="CreateFactory">Create Factory</Button>
+	</FooterTemplate>
 </Modal>
 
 <!-- Edit Factory Modal -->
 <Modal @ref="updateFactoryModal" Title="Edit Factory">
-    <BodyTemplate>
-        @if (SelectedFactory == null)
-        {
-            <p class="text-danger">Error: No factory selected.</p>
-            return;
-        }
-        <div class="mb-3">
-            <label for="factoryNameEdit" class="form-label">Factory Name</label>
-            <input type="text" class="form-control" id="factoryNameEdit" @bind="newFactoryName" placeholder="Enter factory name">
-        </div>
-    </BodyTemplate>
-    <FooterTemplate>
-        <Button Color="ButtonColor.Secondary" @onclick="HideUpdateFactoryModal">Cancel</Button>
-        <Button Color="ButtonColor.Primary" @onclick="UpdateFactory">Save Changes</Button>
-    </FooterTemplate>
+	<BodyTemplate>
+		@if (SelectedFactory == null)
+		{
+			<p class="text-danger">Error: No factory selected.</p>
+			return;
+		}
+		<div class="mb-3">
+			<label for="factoryNameEdit" class="form-label">Factory Name</label>
+			<input type="text" class="form-control" id="factoryNameEdit" @bind="newFactoryName"
+				placeholder="Enter factory name">
+		</div>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideUpdateFactoryModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="UpdateFactory">Save Changes</Button>
+	</FooterTemplate>
 </Modal>
 
 @code {
-    [Parameter] public List<Factory> Factories { get; set; } = new();
-    [Parameter] public Factory? SelectedFactory { get; set; }
-    [Parameter] public EventCallback<Factory?> SelectedFactoryChanged { get; set; }
-    [Parameter] public EventCallback OnFactoryListChanged { get; set; }
-    [Parameter] public EventCallback<(Factory factory, string operation)> OnFactoryOperation { get; set; }
+	[Parameter] public List<Factory> Factories { get; set; } = new();
+	[Parameter] public Factory? SelectedFactory { get; set; }
+	[Parameter] public EventCallback<Factory?> SelectedFactoryChanged { get; set; }
+	[Parameter] public EventCallback OnFactoryListChanged { get; set; }
+	[Parameter] public EventCallback<(Factory factory, string operation)> OnFactoryOperation { get; set; }
 
-    private Modal createFactoryModal = default!;
-    private Modal updateFactoryModal = default!;
-    private string newFactoryName = "";
+	private Modal createFactoryModal = default!;
+	private Modal updateFactoryModal = default!;
+	private string newFactoryName = "";
 
-    public List<Factory> SortedFactories => Factories.OrderBy(f => f.Sorting).ToList();
+	public List<Factory> SortedFactories => Factories.OrderBy(f => f.Sorting).ToList();
 
-    private async Task SelectFactory(Factory factory)
-    {
-        SelectedFactory = factory;
-        await SelectedFactoryChanged.InvokeAsync(factory);
-    }
+	private async Task SelectFactory(Factory factory)
+	{
+		SelectedFactory = factory;
+		await SelectedFactoryChanged.InvokeAsync(factory);
+	}
 
-    private void ShowCreateFactoryModal()
-    {
-        newFactoryName = "";
-        createFactoryModal.ShowAsync();
-    }
+	private void ShowCreateFactoryModal()
+	{
+		newFactoryName = "";
+		createFactoryModal.ShowAsync();
+	}
 
-    public void ShowUpdateFactoryModal()
-    {
-        if (SelectedFactory != null)
-        {
-            newFactoryName = SelectedFactory.Name;
-            updateFactoryModal.ShowAsync();
-        }
-    }
+	public void ShowUpdateFactoryModal()
+	{
+		if (SelectedFactory != null)
+		{
+			newFactoryName = SelectedFactory.Name;
+			updateFactoryModal.ShowAsync();
+		}
+	}
 
-    public async Task DeleteSelectedFactory()
-    {
-        if (SelectedFactory != null)
-        {
-            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{SelectedFactory.Name}'?");
-            if (confirmed)
-            {
-                await OnFactoryOperation.InvokeAsync((SelectedFactory, "delete"));
-                SelectedFactory = null;
-                await SelectedFactoryChanged.InvokeAsync(null);
-            }
-        }
-    }
+	public async Task DeleteSelectedFactory()
+	{
+		if (SelectedFactory != null)
+		{
+			var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{SelectedFactory.Name}'?");
+			if (confirmed)
+			{
+				await OnFactoryOperation.InvokeAsync((SelectedFactory, "delete"));
+				SelectedFactory = null;
+				await SelectedFactoryChanged.InvokeAsync(null);
+			}
+		}
+	}
 
-    private async Task HideCreateFactoryModal()
-    {
-        await createFactoryModal.HideAsync();
-        newFactoryName = "";
-    }
+	private async Task HideCreateFactoryModal()
+	{
+		await createFactoryModal.HideAsync();
+		newFactoryName = "";
+	}
 
-    private async Task HideUpdateFactoryModal()
-    {
-        await updateFactoryModal.HideAsync();
-    }
+	private async Task HideUpdateFactoryModal()
+	{
+		await updateFactoryModal.HideAsync();
+	}
 
-    private async Task CreateFactory()
-    {
-        if (!string.IsNullOrWhiteSpace(newFactoryName))
-        {
-            await OnFactoryOperation.InvokeAsync((new Factory { Name = newFactoryName }, "create"));
-            await HideCreateFactoryModal();
-        }
-    }
+	private async Task CreateFactory()
+	{
+		if (!string.IsNullOrWhiteSpace(newFactoryName))
+		{
+			await OnFactoryOperation.InvokeAsync((new Factory { Name = newFactoryName }, "create"));
+			await HideCreateFactoryModal();
+		}
+	}
 
-    private async Task UpdateFactory()
-    {
-        if (SelectedFactory == null || string.IsNullOrWhiteSpace(newFactoryName))
-        {
-            return;
-        }
-        
-        SelectedFactory.Name = newFactoryName;
-        await OnFactoryOperation.InvokeAsync((SelectedFactory, "update"));
-        await HideUpdateFactoryModal();
-    }
+	private async Task UpdateFactory()
+	{
+		if (SelectedFactory == null || string.IsNullOrWhiteSpace(newFactoryName))
+		{
+			return;
+		}
 
-    private async Task OnFactoryListUpdate(SortableListEventArgs args)
-    {
-        var itemToMove = Factories[args.OldIndex];
-        Factories.RemoveAt(args.OldIndex);
-        
-        if (args.NewIndex < Factories.Count)
-        {
-            Factories.Insert(args.NewIndex, itemToMove);
-        }
-        else
-        {
-            Factories.Add(itemToMove);
-        }
+		SelectedFactory.Name = newFactoryName;
+		await OnFactoryOperation.InvokeAsync((SelectedFactory, "update"));
+		await HideUpdateFactoryModal();
+	}
 
-        // Update sorting values
-        for (int i = 0; i < Factories.Count; i++)
-        {
-            Factories[i].Sorting = i;
-        }
+	private async Task OnFactoryListUpdate(SortableListEventArgs args)
+	{
+		var itemToMove = Factories[args.OldIndex];
+		Factories.RemoveAt(args.OldIndex);
 
-        await OnFactoryListChanged.InvokeAsync();
-    }
+		if (args.NewIndex < Factories.Count)
+		{
+			Factories.Insert(args.NewIndex, itemToMove);
+		}
+		else
+		{
+			Factories.Add(itemToMove);
+		}
 
-    private int GetFactoryInputCount(Factory factory) => factory.Inputs.Count + factory.Recipes.Sum(r => r.Recipe.Inputs.Count);
-    private int GetFactoryOutputCount(Factory factory) => factory.Outputs.Count + factory.Recipes.Sum(r => r.Recipe.Outputs.Count);
+		// Update sorting values
+		for (int i = 0; i < Factories.Count; i++)
+		{
+			Factories[i].Sorting = i;
+		}
+
+		await OnFactoryListChanged.InvokeAsync();
+	}
+
+	private int GetFactoryInputCount(Factory factory) => factory.Inputs.Count + factory.Recipes.Sum(r =>
+	r.Recipe.Inputs.Count);
+	private int GetFactoryOutputCount(Factory factory) => factory.Outputs.Count + factory.Recipes.Sum(r =>
+	r.Recipe.Outputs.Count);
 }

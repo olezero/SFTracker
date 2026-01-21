@@ -1,220 +1,261 @@
 @inject FactoryService FactoryService
+@implements IDisposable
 
 <!-- Recipe Sections -->
 @foreach (var factoryRecipe in SelectedFactory.Recipes.OrderBy(r => r.Id))
 {
-    <div class="row mb-4 border-bottom pb-3">
-        <!-- Recipe Header -->
-        <div class="col-12 mb-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-diagram-3 text-light me-2"></i>
-                    <strong>@factoryRecipe.Recipe.Name</strong>
-                </div>
-                <div class="d-flex align-items-center">
-                    @if (editingRecipeId == factoryRecipe.Id)
-                    {
-                        <input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-                               style="width: 80px;" step="0.1" min="0.1" />
-                        <button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-                            <i class="bi bi-check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    }
-                    else
-                    {
-                        <span class="badge bg-info me-2" style="cursor: pointer;" @onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
-                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRecipe(factoryRecipe.Id)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    }
-                </div>
-            </div>
-        </div>
+	<div class="row mb-4 border-bottom pb-3">
+		<!-- Recipe Header -->
+		<div class="col-12 mb-3">
+			<div class="d-flex justify-content-between align-items-center">
+				<div class="d-flex align-items-center">
+					<i class="bi bi-diagram-3 text-light me-2"></i>
+					<strong>@factoryRecipe.Recipe.Name</strong>
+				</div>
+				<div class="d-flex align-items-center">
+					@if (editingRecipeId == factoryRecipe.Id)
+					{
+						<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
+							style="width: 80px;" step="0.1" min="0.1" />
+						<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+							<i class="bi bi-check"></i>
+						</button>
+						<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
+							<i class="bi bi-x"></i>
+						</button>
+					}
+					else
+					{
+						<span class="badge bg-info me-2" style="cursor: pointer;"
+							@onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
+						<button class="btn btn-sm btn-outline-primary me-1"
+							@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
+							<i class="bi bi-pencil"></i>
+						</button>
+						<button
+							class="btn btn-sm @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
+							@onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
+							<i class="bi @(pendingDeleteRecipeId == factoryRecipe.Id ? "bi-check-lg" : "bi-trash")"></i>
+						</button>
+					}
+				</div>
+			</div>
+		</div>
 
-        <!-- Recipe Inputs -->
-        <div class="col-md-6">
-            @foreach (var input in factoryRecipe.Recipe.Inputs)
-            {
-                var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
-                <div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
-                     style="cursor: pointer;"
-                     @onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
-                     title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-                    <img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-                         style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                    <span class="me-2 flex-grow-1">@input.Part.Name</span>
-                    <span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe, input)</span>
-                    @if (!isEnabled)
-                    {
-                        <i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
-                    }
-                </div>
-            }
-        </div>
+		<!-- Recipe Inputs -->
+		<div class="col-md-6">
+			@foreach (var input in factoryRecipe.Recipe.Inputs)
+			{
+				var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
+				<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+					@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
+					title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
+					<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+						style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+					<span class="me-2 flex-grow-1">@input.Part.Name</span>
+					<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe,
+										input)</span>
+			@if (!isEnabled)
+					{
+						<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
+							title="Disabled from balance calculation"></i>
+					}
+				</div>
+			}
+		</div>
 
-        <!-- Recipe Outputs -->
-        <div class="col-md-6">
-            @foreach (var output in factoryRecipe.Recipe.Outputs)
-            {
-                var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
-                <div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")"
-                     style="cursor: pointer;"
-                     @onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
-                     title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-                    <img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-                         style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-                    <span class="me-2 flex-grow-1">@output.Part.Name</span>
-                    <span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe, output)</span>
-                    @if (!isEnabled)
-                    {
-                        <i class="bi bi-eye-slash text-muted" style="font-size: 12px;" title="Disabled from balance calculation"></i>
-                    }
-                </div>
-            }
-        </div>
-    </div>
+		<!-- Recipe Outputs -->
+		<div class="col-md-6">
+			@foreach (var output in factoryRecipe.Recipe.Outputs)
+			{
+				var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
+				<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+					@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
+					title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
+					<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+						style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+					<span class="me-2 flex-grow-1">@output.Part.Name</span>
+					<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe,
+										output)</span>
+			@if (!isEnabled)
+					{
+						<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
+							title="Disabled from balance calculation"></i>
+					}
+				</div>
+			}
+		</div>
+	</div>
 }
 
 @* Advanced Recipe Modals *@
-<RecipeEditorModal @ref="advancedEditRecipeModal"
-                   Recipes="allRecipes"
-                   IsEditMode="true"
-                   SelectedRecipe="editModalSelectedRecipe"
-                   InitialMultiplier="editModalInitialMultiplier"
-                   FactoryRecipeId="editModalFactoryRecipeId"
-                   OnSave="OnAdvancedRecipeEdit" />
+<RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="allRecipes" IsEditMode="true"
+	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
+	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
 @code {
-    [Parameter] public Factory SelectedFactory { get; set; } = null!;
-    [Parameter] public List<DbPart> AllParts { get; set; } = new();
-    [Parameter] public List<DbRecipe> allRecipes { get; set; } = new();
-    [Parameter] public EventCallback OnRecipeChanged { get; set; }
+	[Parameter] public Factory SelectedFactory { get; set; } = null!;
+	[Parameter] public List<DbPart> AllParts { get; set; } = new();
+	[Parameter] public List<DbRecipe> allRecipes { get; set; } = new();
+	[Parameter] public EventCallback OnRecipeChanged { get; set; }
 
-    // Edit mode fields for recipes
-    private int? editingRecipeId = null;
-    private double editingRecipeMultiplier = 0;
+	// Edit mode fields for recipes
+	private int? editingRecipeId = null;
+	private double editingRecipeMultiplier = 0;
 
-    // Recipe modals
-    private RecipeEditorModal? advancedEditRecipeModal;
-    
-    // Edit modal state
-    private DbRecipe? editModalSelectedRecipe;
-    private double? editModalInitialMultiplier;
-    private int? editModalFactoryRecipeId;
+	// Recipe modals
+	private RecipeEditorModal? advancedEditRecipeModal;
 
-    private void StartEditRecipe(FactoryRecipe factoryRecipe)
-    {
-        editingRecipeId = factoryRecipe.Id;
-        editingRecipeMultiplier = factoryRecipe.Multiplier;
-    }
+	// Edit modal state
+	private DbRecipe? editModalSelectedRecipe;
+	private double? editModalInitialMultiplier;
+	private int? editModalFactoryRecipeId;
 
-    private async Task SaveRecipeEdit(int factoryRecipeId)
-    {
-        if (editingRecipeMultiplier > 0)
-        {
-            await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier);
-            await OnRecipeChanged.InvokeAsync();
-            CancelRecipeEdit();
-        }
-    }
+	// Delete confirmation state
+	private int? pendingDeleteRecipeId = null;
+	private System.Threading.Timer? deleteConfirmationTimer;
+	private const int DeleteConfirmationSeconds = 3;
 
-    private void CancelRecipeEdit()
-    {
-        editingRecipeId = null;
-        editingRecipeMultiplier = 0;
-    }
+	private void StartEditRecipe(FactoryRecipe factoryRecipe)
+	{
+		editingRecipeId = factoryRecipe.Id;
+		editingRecipeMultiplier = factoryRecipe.Multiplier;
+	}
 
-    private async Task RemoveRecipe(int factoryRecipeId)
-    {
-        await FactoryService.RemoveFactoryRecipeAsync(factoryRecipeId);
-        await OnRecipeChanged.InvokeAsync();
-    }
+	private async Task SaveRecipeEdit(int factoryRecipeId)
+	{
+		if (editingRecipeMultiplier > 0)
+		{
+			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier);
+			await OnRecipeChanged.InvokeAsync();
+			CancelRecipeEdit();
+		}
+	}
 
-    /// <summary>
-    /// Toggle whether a recipe input is enabled/disabled for balance calculations
-    /// </summary>
-    private async Task ToggleRecipeInput(int factoryRecipeId, int recipeInputId)
-    {
-        await FactoryService.ToggleRecipeInputAsync(factoryRecipeId, recipeInputId);
-        await OnRecipeChanged.InvokeAsync();
-    }
+	private void CancelRecipeEdit()
+	{
+		editingRecipeId = null;
+		editingRecipeMultiplier = 0;
+	}
 
-    /// <summary>
-    /// Toggle whether a recipe output is enabled/disabled for balance calculations
-    /// </summary>
-    private async Task ToggleRecipeOutput(int factoryRecipeId, int recipeOutputId)
-    {
-        await FactoryService.ToggleRecipeOutputAsync(factoryRecipeId, recipeOutputId);
-        await OnRecipeChanged.InvokeAsync();
-    }
+	private async Task RemoveRecipe(int factoryRecipeId)
+	{
+		await FactoryService.RemoveFactoryRecipeAsync(factoryRecipeId);
+		await OnRecipeChanged.InvokeAsync();
+		pendingDeleteRecipeId = null;
+		deleteConfirmationTimer?.Dispose();
+	}
 
-    private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
-    {
-        if (advancedEditRecipeModal != null)
-        {
-            // Set the state properties for editing mode
-            editModalSelectedRecipe = factoryRecipe.Recipe;
-            editModalInitialMultiplier = factoryRecipe.Multiplier;
-            editModalFactoryRecipeId = factoryRecipe.Id;
-            StateHasChanged(); // Trigger re-render to pass new parameters
-            await advancedEditRecipeModal.ShowModal();
-        }
-    }
+	private void HandleRemoveRecipeClick(int factoryRecipeId)
+	{
+		if (pendingDeleteRecipeId == factoryRecipeId)
+		{
+			// Second click - confirm deletion
+			_ = RemoveRecipe(factoryRecipeId);
+		}
+		else
+		{
+			// First click - enter confirmation mode
+			pendingDeleteRecipeId = factoryRecipeId;
 
-    private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
-    {
-        if (SelectedFactory != null && args.factoryRecipeId.HasValue)
-        {
-            await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
-            await OnRecipeChanged.InvokeAsync();
-        }
-    }
+			// Cancel any existing timer
+			deleteConfirmationTimer?.Dispose();
 
-    private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input)
-    {
-        var baseNumber = input.GetQuantityPerMinute(1);
-        var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier);
+			// Start new timer to reset confirmation after N seconds
+			deleteConfirmationTimer = new System.Threading.Timer(_ =>
+			{
+				pendingDeleteRecipeId = null;
+				InvokeAsync(StateHasChanged);
+			}, null, TimeSpan.FromSeconds(DeleteConfirmationSeconds), Timeout.InfiniteTimeSpan);
 
-        var formattedBaseNumber = FormatNumber(baseNumber);
-        var formattedTotalNumber = FormatNumber(totalNumber);
+			StateHasChanged();
+		}
+	}
 
-        if (factoryRecipe.Multiplier == 1.0)
-        {
-            return $"{formattedTotalNumber}/min";
-        }
-        else
-        {
-            return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-        }
-    }
+	public void Dispose()
+	{
+		deleteConfirmationTimer?.Dispose();
+	}
 
-    private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output)
-    {
-        var baseNumber = output.GetQuantityPerMinute(1);
-        var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier);
+	/// <summary>
+	/// Toggle whether a recipe input is enabled/disabled for balance calculations
+	/// </summary>
+	private async Task ToggleRecipeInput(int factoryRecipeId, int recipeInputId)
+	{
+		await FactoryService.ToggleRecipeInputAsync(factoryRecipeId, recipeInputId);
+		await OnRecipeChanged.InvokeAsync();
+	}
 
-        var formattedBaseNumber = FormatNumber(baseNumber);
-        var formattedTotalNumber = FormatNumber(totalNumber);
+	/// <summary>
+	/// Toggle whether a recipe output is enabled/disabled for balance calculations
+	/// </summary>
+	private async Task ToggleRecipeOutput(int factoryRecipeId, int recipeOutputId)
+	{
+		await FactoryService.ToggleRecipeOutputAsync(factoryRecipeId, recipeOutputId);
+		await OnRecipeChanged.InvokeAsync();
+	}
 
-        if (factoryRecipe.Multiplier == 1.0)
-        {
-            return $"{formattedTotalNumber}/min";
-        }
-        else
-        {
-            return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-        }
-    }
-    
-    private string FormatNumber(double value)
-    {
-        // Round to 4 decimal places and remove trailing zeros
-        return Math.Round(value, 4).ToString("0.####");
-    }
+	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
+	{
+		if (advancedEditRecipeModal != null)
+		{
+			// Set the state properties for editing mode
+			editModalSelectedRecipe = factoryRecipe.Recipe;
+			editModalInitialMultiplier = factoryRecipe.Multiplier;
+			editModalFactoryRecipeId = factoryRecipe.Id;
+			StateHasChanged(); // Trigger re-render to pass new parameters
+			await advancedEditRecipeModal.ShowModal();
+		}
+	}
+
+	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
+	{
+		if (SelectedFactory != null && args.factoryRecipeId.HasValue)
+		{
+			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
+			await OnRecipeChanged.InvokeAsync();
+		}
+	}
+
+	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input)
+	{
+		var baseNumber = input.GetQuantityPerMinute(1);
+		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier);
+
+		var formattedBaseNumber = FormatNumber(baseNumber);
+		var formattedTotalNumber = FormatNumber(totalNumber);
+
+		if (factoryRecipe.Multiplier == 1.0)
+		{
+			return $"{formattedTotalNumber}/min";
+		}
+		else
+		{
+			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
+		}
+	}
+
+	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output)
+	{
+		var baseNumber = output.GetQuantityPerMinute(1);
+		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier);
+
+		var formattedBaseNumber = FormatNumber(baseNumber);
+		var formattedTotalNumber = FormatNumber(totalNumber);
+
+		if (factoryRecipe.Multiplier == 1.0)
+		{
+			return $"{formattedTotalNumber}/min";
+		}
+		else
+		{
+			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
+		}
+	}
+
+	private string FormatNumber(double value)
+	{
+		// Round to 4 decimal places and remove trailing zeros
+		return Math.Round(value, 4).ToString("0.####");
+	}
 }

@@ -89,14 +89,14 @@
 }
 
 @* Advanced Recipe Modals *@
-<RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="allRecipes" IsEditMode="true"
+<RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
 	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
 	[Parameter] public List<DbPart> AllParts { get; set; } = new();
-	[Parameter] public List<DbRecipe> allRecipes { get; set; } = new();
+	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
 
 	// Edit mode fields for recipes

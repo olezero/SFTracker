@@ -46,10 +46,10 @@
 	request)
 	{
 		return await Task.FromResult(new AutoCompleteDataProviderResult<DbPart>()
-		{
-			Data = allParts.AsEnumerable(),
-			TotalCount = allParts.Count
-		});
+			{
+				Data = allParts.AsEnumerable(),
+				TotalCount = allParts.Count
+			});
 	}
 
 	private ResourceBalance? ResourceBalanceComponent { get; set; }

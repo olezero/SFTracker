@@ -155,11 +155,11 @@
 		}
 	}
 
-	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, int? factoryRecipeId) args)
+	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId) args)
 	{
 		if (SelectedFactory != null)
 		{
-			await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, args.recipeId, args.multiplier);
+			await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, args.recipeId, args.multiplier, args.isSlooped);
 			// Clear new recipe id
 			newRecipeId = null;
 			editModalSelectedRecipe = null;

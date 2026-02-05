@@ -91,6 +91,7 @@
 @* Advanced Recipe Modals *@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
+	InitialIsSlooped="editModalInitialIsSlooped"
 	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
 @code {
@@ -109,6 +110,7 @@
 	// Edit modal state
 	private DbRecipe? editModalSelectedRecipe;
 	private double? editModalInitialMultiplier;
+	private bool? editModalInitialIsSlooped;
 	private int? editModalFactoryRecipeId;
 
 	// Delete confirmation state
@@ -202,17 +204,18 @@
 			// Set the state properties for editing mode
 			editModalSelectedRecipe = factoryRecipe.Recipe;
 			editModalInitialMultiplier = factoryRecipe.Multiplier;
+			editModalInitialIsSlooped = factoryRecipe.IsSlooped;
 			editModalFactoryRecipeId = factoryRecipe.Id;
 			StateHasChanged(); // Trigger re-render to pass new parameters
 			await advancedEditRecipeModal.ShowModal();
 		}
 	}
 
-	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, int? factoryRecipeId) args)
+	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId) args)
 	{
 		if (SelectedFactory != null && args.factoryRecipeId.HasValue)
 		{
-			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier);
+			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier, args.isSlooped);
 			await OnRecipeChanged.InvokeAsync();
 		}
 	}
@@ -238,14 +241,22 @@
 	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output)
 	{
 		var baseNumber = output.GetQuantityPerMinute(1);
-		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier);
+		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier, factoryRecipe.IsSlooped);
 
 		var formattedBaseNumber = FormatNumber(baseNumber);
 		var formattedTotalNumber = FormatNumber(totalNumber);
 
-		if (factoryRecipe.Multiplier == 1.0)
+		if (factoryRecipe.Multiplier == 1.0 && !factoryRecipe.IsSlooped)
 		{
 			return $"{formattedTotalNumber}/min";
+		}
+		else if (factoryRecipe.IsSlooped && factoryRecipe.Multiplier == 1.0)
+		{
+			return $"{formattedBaseNumber} x 2 (slooped) = {formattedTotalNumber}/min";
+		}
+		else if (factoryRecipe.IsSlooped)
+		{
+			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} x 2 (slooped) = {formattedTotalNumber}/min";
 		}
 		else
 		{

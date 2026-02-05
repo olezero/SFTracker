@@ -118,31 +118,34 @@ public class FactoryService {
 		}
 	}
 
-	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier) {
+	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier, bool isSlooped = false) {
 		var factoryRecipe = new FactoryRecipe {
 			FactoryId = factoryId,
 			RecipeId = recipeId,
 			Multiplier = multiplier,
+			IsSlooped = isSlooped,
 			IsActive = true
 		};
 		m_context.FactoryRecipes.Add(factoryRecipe);
 		await m_context.SaveChangesAsync();
 	}
 
-	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier) {
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier, bool isSlooped = false) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {
 			factoryRecipe.Multiplier = multiplier;
+			factoryRecipe.IsSlooped = isSlooped;
 			m_context.FactoryRecipes.Update(factoryRecipe);
 			await m_context.SaveChangesAsync();
 		}
 	}
 
-	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, int recipeId, double multiplier) {
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, int recipeId, double multiplier, bool isSlooped = false) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {
 			factoryRecipe.RecipeId = recipeId;
 			factoryRecipe.Multiplier = multiplier;
+			factoryRecipe.IsSlooped = isSlooped;
 			m_context.FactoryRecipes.Update(factoryRecipe);
 			await m_context.SaveChangesAsync();
 		}

@@ -25,6 +25,15 @@
 						value="@FormatNumber(Multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
 				</div>
 			</div>
+			<div class="mb-3">
+				<div class="form-check">
+					<input class="form-check-input" type="checkbox" id="sloopedCheck"
+						checked="@IsSlooped" @onchange="OnSloopedChange">
+					<label class="form-check-label" for="sloopedCheck">
+						Slooped (2x output)
+					</label>
+				</div>
+			</div>
 			<div class="row">
 				<div class="col">
 					<h6>Inputs</h6>
@@ -70,11 +79,13 @@
 	[Parameter] public int? FactoryRecipeId { get; set; }
 	[Parameter] public DbRecipe? SelectedRecipe { get; set; }
 	[Parameter] public double? InitialMultiplier { get; set; }
-	[Parameter] public EventCallback<(int recipeId, double multiplier, int? factoryRecipeId)> OnSave { get; set; }
+	[Parameter] public bool? InitialIsSlooped { get; set; }
+	[Parameter] public EventCallback<(int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId)> OnSave { get; set; }
 
 	private Modal modalRef = default!;
 	private DbRecipe? CurrentRecipe;
 	private double Multiplier = 1.0;
+	private bool IsSlooped = false;
 	private Dictionary<int, double> InputValues = new();
 	private Dictionary<int, double> OutputValues = new();
 
@@ -84,11 +95,13 @@
 		{
 			CurrentRecipe = SelectedRecipe;
 			Multiplier = InitialMultiplier.Value;
+			IsSlooped = InitialIsSlooped ?? false;
 			PopulateFieldsFromMultiplier();
 		}
 		else if (!IsEditMode)
 		{
 			Multiplier = 1.0;
+			IsSlooped = false;
 			if (SelectedRecipe != null)
 			{
 				CurrentRecipe = SelectedRecipe;
@@ -108,6 +121,7 @@
 		var selectedId = int.TryParse(e.Value?.ToString(), out var id) ? id : (int?)null;
 		CurrentRecipe = Recipes.FirstOrDefault(r => r.Id == selectedId);
 		Multiplier = 1.0;
+		IsSlooped = false;
 		PopulateFieldsFromMultiplier();
 	}
 
@@ -120,7 +134,7 @@
 			foreach (var input in CurrentRecipe.Inputs)
 				InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
 			foreach (var output in CurrentRecipe.Outputs)
-				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier, IsSlooped);
 		}
 	}
 
@@ -154,7 +168,7 @@
 		foreach (var output in CurrentRecipe.Outputs)
 		{
 			if (!(!isInput && output.Id == id))
-				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier, IsSlooped);
 			else
 				OutputValues[output.Id] = newValue;
 		}
@@ -170,7 +184,17 @@
 		foreach (var input in CurrentRecipe.Inputs)
 			InputValues[input.Id] = input.GetQuantityPerMinute(Multiplier);
 		foreach (var output in CurrentRecipe.Outputs)
-			OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier);
+				OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier, IsSlooped);
+	}
+
+	private void OnSloopedChange(ChangeEventArgs e)
+	{
+		if (CurrentRecipe == null) return;
+		IsSlooped = e.Value as bool? ?? false;
+		
+		// Update all output fields based on the new slooped state
+		foreach (var output in CurrentRecipe.Outputs)
+			OutputValues[output.Id] = output.GetQuantityPerMinute(Multiplier, IsSlooped);
 	}
 
 	private async void HideModal()
@@ -180,6 +204,7 @@
 		InputValues.Clear();
 		OutputValues.Clear();
 		Multiplier = 1.0;
+		IsSlooped = false;
 		await modalRef.HideAsync();
 	}
 
@@ -191,7 +216,7 @@
 	private async Task Save()
 	{
 		if (CurrentRecipe == null || Multiplier <= 0) return;
-		await OnSave.InvokeAsync((CurrentRecipe.Id, Multiplier, IsEditMode ? FactoryRecipeId : null));
+		await OnSave.InvokeAsync((CurrentRecipe.Id, Multiplier, IsSlooped, IsEditMode ? FactoryRecipeId : null));
 		HideModal();
 	}
 

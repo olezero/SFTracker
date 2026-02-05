@@ -22,6 +22,7 @@ public class FactoryRecipe {
 	public int RecipeId { get; set; }
 	public double Multiplier { get; set; }
 	public bool IsActive { get; set; } = true;
+	public bool IsSlooped { get; set; } = false;
 
 	[ForeignKey(nameof(FactoryId))]
 	public Factory Factory { get; set; } = null!;

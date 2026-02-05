@@ -255,7 +255,7 @@
 				var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
 				return override_?.IsEnabled ?? true; // Default to enabled if no override
 			})
-			.Select(ro => ro.GetQuantityPerMinute(fr.Multiplier)))
+			.Select(ro => ro.GetQuantityPerMinute(fr)))
 			.Sum();
 
 			// Total consumption and production

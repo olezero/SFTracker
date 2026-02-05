@@ -21,5 +21,5 @@ public class DbRecipeOutput {
 	public DbRecipe Recipe { get; set; } = null!;
 
 	public double GetQuantityPerMinute(double multiplier, bool isSlooped = false) => Quantity * multiplier / Recipe.TimeSeconds * 60 * (isSlooped ? 2 : 1);
-	public double GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60;
+	public double GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60 * (factoryRecipe.IsSlooped ? 2 : 1);
 }

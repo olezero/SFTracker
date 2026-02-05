@@ -63,13 +63,6 @@ else
 
 	private async Task DeleteSelectedFactory()
 	{
-		if (SelectedFactory != null)
-		{
-			var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the factory '{SelectedFactory.Name}'?");
-			if (confirmed)
-			{
-				await OnDeleteSelectedFactory.InvokeAsync();
-			}
-		}
+		await OnDeleteSelectedFactory.InvokeAsync();
 	}
 }

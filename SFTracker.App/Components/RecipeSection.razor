@@ -2,24 +2,25 @@
 @implements IDisposable
 
 <!-- Recipe Sections -->
-@{
-	var orderedRecipes = SelectedFactory.Recipes.OrderBy(r => r.Sorting).ThenBy(r => r.Id).ToList();
-}
-@for (var i = 0; i < orderedRecipes.Count; i++)
-{
-	var factoryRecipe = orderedRecipes[i];
-	var isFirst = i == 0;
-	var isLast = i == orderedRecipes.Count - 1;
-	// Main product = first output (index 0); recipes list their primary product first.
-	var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
-	<div class="d-flex align-items-center mb-2 border-bottom pb-2 border-secondary">
-		<!-- Main product icon (far left, vertically centered) -->
-		@if (mainProduct != null)
-		{
-			<img src="@mainProduct.ImageUrl" alt="@mainProduct.Name" title="@mainProduct.Name"
-				class="me-3 flex-shrink-0"
-				style="width: 48px; height: 48px; object-fit: contain;" onerror="this.style.visibility='hidden'">
+<SortableList TItem="FactoryRecipe" Data="OrderedRecipes" Context="factoryRecipe"
+	Handle=".recipe-drag-handle" Class="recipe-sortable" OnUpdate="OnRecipeListUpdate">
+	<ItemTemplate>
+		@{
+			var ordered = OrderedRecipes;
+			var idx = ordered.FindIndex(r => r.Id == factoryRecipe.Id);
+			var isFirst = idx <= 0;
+			var isLast = idx == ordered.Count - 1;
+			// Main product = first output (index 0); recipes list their primary product first.
+			var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
 		}
+		<div class="d-flex align-items-center mb-2 border-bottom pb-2 border-secondary">
+			<!-- Main product icon (far left) - doubles as drag handle -->
+			@if (mainProduct != null)
+			{
+				<img src="@mainProduct.ImageUrl" alt="@mainProduct.Name" title="Drag to reorder"
+					class="me-3 flex-shrink-0 recipe-drag-handle"
+					style="width: 48px; height: 48px; object-fit: contain;" onerror="this.style.visibility='hidden'">
+			}
 
 		<!-- Title + inputs/outputs -->
 		<div class="flex-grow-1">
@@ -113,8 +114,9 @@
 				</button>
 			</div>
 		</div>
-	</div>
-}
+		</div>
+	</ItemTemplate>
+</SortableList>
 
 @* Advanced Recipe Modals *@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
@@ -127,6 +129,10 @@
 	[Parameter] public List<DbPart> AllParts { get; set; } = new();
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
+
+	// Recipes in manual display order; also the data source for the sortable list.
+	private List<FactoryRecipe> OrderedRecipes =>
+		SelectedFactory.Recipes.OrderBy(r => r.Sorting).ThenBy(r => r.Id).ToList();
 
 	// Edit mode fields for recipes
 	private int? editingRecipeId = null;
@@ -171,6 +177,21 @@
 	private async Task MoveRecipe(int factoryRecipeId, int direction)
 	{
 		await FactoryService.MoveFactoryRecipeAsync(factoryRecipeId, direction);
+		await OnRecipeChanged.InvokeAsync();
+	}
+
+	private async Task OnRecipeListUpdate(SortableListEventArgs args)
+	{
+		var ordered = OrderedRecipes;
+		if (args.OldIndex < 0 || args.OldIndex >= ordered.Count)
+			return;
+
+		var moved = ordered[args.OldIndex];
+		ordered.RemoveAt(args.OldIndex);
+		var newIndex = Math.Clamp(args.NewIndex, 0, ordered.Count);
+		ordered.Insert(newIndex, moved);
+
+		await FactoryService.ReorderFactoryRecipesAsync(ordered.Select(r => r.Id).ToList());
 		await OnRecipeChanged.InvokeAsync();
 	}
 

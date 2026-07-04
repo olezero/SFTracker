@@ -189,6 +189,25 @@ public class FactoryService {
 		await m_context.SaveChangesAsync();
 	}
 
+	/// <summary>
+	/// Persist a full manual ordering of a factory's recipes. Sorting is assigned
+	/// from the position of each id in the supplied list.
+	/// </summary>
+	public async Task ReorderFactoryRecipesAsync(List<int> orderedFactoryRecipeIds) {
+		var recipes = await m_context.FactoryRecipes
+			.Where(r => orderedFactoryRecipeIds.Contains(r.Id))
+			.ToListAsync();
+
+		for (int i = 0; i < orderedFactoryRecipeIds.Count; i++) {
+			var recipe = recipes.FirstOrDefault(r => r.Id == orderedFactoryRecipeIds[i]);
+			if (recipe != null) {
+				recipe.Sorting = i;
+			}
+		}
+
+		await m_context.SaveChangesAsync();
+	}
+
 	public async Task RemoveFactoryRecipeAsync(int factoryRecipeId) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {

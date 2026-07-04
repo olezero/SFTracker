@@ -82,3 +82,28 @@ h1:focus {
 .btn:focus:not(:focus-visible) {
     box-shadow: none;
 }
+
+/* Recipe drag-and-drop: SortableList wraps each recipe in a .list-group-item.
+   Strip that chrome so recipes keep their plain look, and mark the icon as the
+   drag handle. */
+.recipe-sortable .list-group-item {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+}
+
+/* SortableList's scoped CSS forces `cursor: grab !important` on every
+   .list-group-item, and cursor is inherited, so the whole row shows the grab
+   cursor. Override it (higher specificity via `div.` beats the scoped rule) so
+   only the handle shows grab. */
+.recipe-sortable div.list-group-item {
+    cursor: default !important;
+}
+
+.recipe-drag-handle {
+    cursor: grab !important;
+}
+
+.recipe-drag-handle:active {
+    cursor: grabbing !important;
+}

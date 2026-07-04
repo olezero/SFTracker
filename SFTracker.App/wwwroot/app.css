@@ -75,3 +75,10 @@ h1:focus {
     right: auto !important;
     margin: 0 0 2px 0 !important;
 }
+
+/* Don't leave the focus ring stuck on buttons after a mouse click
+   (e.g. the recipe up/down/edit/delete buttons). Keyboard focus still
+   shows the ring via :focus-visible for accessibility. */
+.btn:focus:not(:focus-visible) {
+    box-shadow: none;
+}

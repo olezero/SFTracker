@@ -12,7 +12,7 @@
 	var isLast = i == orderedRecipes.Count - 1;
 	// Main product = first output (index 0); recipes list their primary product first.
 	var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
-	<div class="d-flex align-items-center mb-2 border-bottom pb-2">
+	<div class="d-flex align-items-center mb-2 border-bottom pb-2 border-secondary">
 		<!-- Main product icon (far left, vertically centered) -->
 		@if (mainProduct != null)
 		{

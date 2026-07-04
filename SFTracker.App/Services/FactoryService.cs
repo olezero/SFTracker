@@ -119,12 +119,18 @@ public class FactoryService {
 	}
 
 	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier, bool isSlooped = false) {
+		// Place new recipes last in the manual ordering.
+		var maxSorting = await m_context.FactoryRecipes
+			.Where(r => r.FactoryId == factoryId && r.IsActive)
+			.MaxAsync(r => (double?)r.Sorting) ?? -1;
+
 		var factoryRecipe = new FactoryRecipe {
 			FactoryId = factoryId,
 			RecipeId = recipeId,
 			Multiplier = multiplier,
 			IsSlooped = isSlooped,
-			IsActive = true
+			IsActive = true,
+			Sorting = maxSorting + 1
 		};
 		m_context.FactoryRecipes.Add(factoryRecipe);
 		await m_context.SaveChangesAsync();

@@ -12,7 +12,7 @@
 	var isLast = i == orderedRecipes.Count - 1;
 	// Main product = first output (index 0); recipes list their primary product first.
 	var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
-	<div class="d-flex align-items-center mb-3 border-bottom pb-2">
+	<div class="d-flex align-items-center mb-2 border-bottom pb-2">
 		<!-- Main product icon (far left, vertically centered) -->
 		@if (mainProduct != null)
 		{
@@ -27,18 +27,21 @@
 				<span>@factoryRecipe.Recipe.Name</span>
 				@if (editingRecipeId == factoryRecipe.Id)
 				{
-					<input type="number" class="form-control form-control-sm ms-2" @bind="editingRecipeMultiplier"
-						style="width: 70px;" step="0.1" min="0.1" />
-					<button class="btn btn-sm btn-success ms-1" title="Save" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-						<i class="bi bi-check"></i>
-					</button>
-					<button class="btn btn-sm btn-secondary ms-1" title="Cancel" @onclick="CancelRecipeEdit">
-						<i class="bi bi-x"></i>
-					</button>
+					<div class="ms-auto d-flex align-items-center">
+						<input type="number" class="form-control form-control-sm me-1" @bind="editingRecipeMultiplier"
+							style="width: 70px;" step="0.1" min="0.1" />
+						<button class="btn btn-sm btn-success me-1" title="Save" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+							<i class="bi bi-check"></i>
+						</button>
+						<button class="btn btn-sm btn-secondary" title="Cancel" @onclick="CancelRecipeEdit">
+							<i class="bi bi-x"></i>
+						</button>
+					</div>
 				}
 				else
 				{
-					<span class="badge bg-info ms-2" style="cursor: pointer;" title="Machines needed - click to edit"
+					<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
+						title="Machines needed - click to edit"
 						@onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
 				}
 			</div>
@@ -75,7 +78,7 @@
 							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="me-2 flex-grow-1">@output.Part.Name</span>
-							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe, output)</span>
+							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeOutputText(factoryRecipe, output)</span>
 							@if (!isEnabled)
 							{
 								<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"

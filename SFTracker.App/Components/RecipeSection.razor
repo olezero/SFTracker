@@ -191,6 +191,16 @@
 		var newIndex = Math.Clamp(args.NewIndex, 0, ordered.Count);
 		ordered.Insert(newIndex, moved);
 
+		// Optimistic UI: update the in-memory Sorting on the live instances (the same
+		// ones OrderedRecipes is derived from) and re-render straight away. SortableList's
+		// JS reverts the dragged element to its original DOM position, so without this the
+		// row visibly snaps back until the DB reload lands. Persisting happens after.
+		for (int i = 0; i < ordered.Count; i++)
+		{
+			ordered[i].Sorting = i;
+		}
+		StateHasChanged();
+
 		await FactoryService.ReorderFactoryRecipesAsync(ordered.Select(r => r.Id).ToList());
 		await OnRecipeChanged.InvokeAsync();
 	}

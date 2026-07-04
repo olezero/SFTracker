@@ -10,94 +10,105 @@
 	var factoryRecipe = orderedRecipes[i];
 	var isFirst = i == 0;
 	var isLast = i == orderedRecipes.Count - 1;
-	<div class="row mb-4 border-bottom pb-3">
-		<!-- Recipe Header -->
-		<div class="col-12 mb-3">
-			<div class="d-flex justify-content-between align-items-center">
-				<div class="d-flex align-items-center">
-					<div class="btn-group-vertical btn-group-sm me-2" role="group" aria-label="Reorder recipe">
-						<button class="btn btn-outline-secondary py-0 px-1" title="Move up"
-							disabled="@isFirst" @onclick="() => MoveRecipe(factoryRecipe.Id, -1)">
-							<i class="bi bi-chevron-up"></i>
-						</button>
-						<button class="btn btn-outline-secondary py-0 px-1" title="Move down"
-							disabled="@isLast" @onclick="() => MoveRecipe(factoryRecipe.Id, 1)">
-							<i class="bi bi-chevron-down"></i>
-						</button>
-					</div>
-					<i class="bi bi-diagram-3 text-light me-2"></i>
-					<strong>@factoryRecipe.Recipe.Name</strong>
-				</div>
-				<div class="d-flex align-items-center">
-					@if (editingRecipeId == factoryRecipe.Id)
+	// Main product = first output (index 0); recipes list their primary product first.
+	var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
+	<div class="d-flex align-items-center mb-3 border-bottom pb-2">
+		<!-- Main product icon (far left, vertically centered) -->
+		@if (mainProduct != null)
+		{
+			<img src="@mainProduct.ImageUrl" alt="@mainProduct.Name" title="@mainProduct.Name"
+				class="me-3 flex-shrink-0"
+				style="width: 48px; height: 48px; object-fit: contain;" onerror="this.style.visibility='hidden'">
+		}
+
+		<!-- Title + inputs/outputs -->
+		<div class="flex-grow-1">
+			<div class="fw-bold text-center mb-1">@factoryRecipe.Recipe.Name</div>
+			<div class="row g-0">
+				<!-- Recipe Inputs -->
+				<div class="col-md-6">
+					@foreach (var input in factoryRecipe.Recipe.Inputs)
 					{
-						<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
-							style="width: 80px;" step="0.1" min="0.1" />
-						<button class="btn btn-sm btn-success me-1" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-							<i class="bi bi-check"></i>
-						</button>
-						<button class="btn btn-sm btn-secondary" @onclick="CancelRecipeEdit">
-							<i class="bi bi-x"></i>
-						</button>
+						var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
+						<div class="d-flex align-items-center mb-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+							@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
+							title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
+							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+							<span class="me-2 flex-grow-1">@input.Part.Name</span>
+							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe, input)</span>
+							@if (!isEnabled)
+							{
+								<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
+									title="Disabled from balance calculation"></i>
+							}
+						</div>
 					}
-					else
+				</div>
+
+				<!-- Recipe Outputs -->
+				<div class="col-md-6">
+					@foreach (var output in factoryRecipe.Recipe.Outputs)
 					{
-						<span class="badge bg-info me-2" style="cursor: pointer;"
-							@onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
-						<button class="btn btn-sm btn-outline-primary me-1"
-							@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
-							<i class="bi bi-pencil"></i>
-						</button>
-						<button
-							class="btn btn-sm @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
-							@onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
-							<i class="bi @(pendingDeleteRecipeId == factoryRecipe.Id ? "bi-check-lg" : "bi-trash")"></i>
-						</button>
+						var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
+						<div class="d-flex align-items-center mb-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+							@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
+							title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
+							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+							<span class="me-2 flex-grow-1">@output.Part.Name</span>
+							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe, output)</span>
+							@if (!isEnabled)
+							{
+								<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
+									title="Disabled from balance calculation"></i>
+							}
+						</div>
 					}
 				</div>
 			</div>
 		</div>
 
-		<!-- Recipe Inputs -->
-		<div class="col-md-6">
-			@foreach (var input in factoryRecipe.Recipe.Inputs)
+		<!-- Multiplier + actions (far right, vertically centered) -->
+		<div class="ms-3 flex-shrink-0 d-flex align-items-center">
+			@if (editingRecipeId == factoryRecipe.Id)
 			{
-				var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
-				<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
-					@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
-					title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-					<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-						style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-					<span class="me-2 flex-grow-1">@input.Part.Name</span>
-					<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe,
-										input)</span>
-			@if (!isEnabled)
-					{
-						<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
-							title="Disabled from balance calculation"></i>
-					}
+				<input type="number" class="form-control form-control-sm me-2" @bind="editingRecipeMultiplier"
+					style="width: 70px;" step="0.1" min="0.1" />
+				<div class="btn-group btn-group-sm" role="group">
+					<button class="btn btn-success" title="Save" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
+						<i class="bi bi-check"></i>
+					</button>
+					<button class="btn btn-secondary" title="Cancel" @onclick="CancelRecipeEdit">
+						<i class="bi bi-x"></i>
+					</button>
 				</div>
 			}
-		</div>
-
-		<!-- Recipe Outputs -->
-		<div class="col-md-6">
-			@foreach (var output in factoryRecipe.Recipe.Outputs)
+			else
 			{
-				var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
-				<div class="d-flex align-items-center mb-2 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
-					@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
-					title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-					<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-						style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-					<span class="me-2 flex-grow-1">@output.Part.Name</span>
-					<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeOutputText(factoryRecipe,
-										output)</span>
-			@if (!isEnabled)
-					{
-						<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
-							title="Disabled from balance calculation"></i>
-					}
+				<span class="badge bg-info me-2" style="cursor: pointer;"
+					@onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
+				<div class="d-flex flex-column" style="gap: 3px;">
+					<div class="btn-group btn-group-sm" role="group" aria-label="Reorder recipe">
+						<button class="btn btn-outline-secondary" title="Move up"
+							disabled="@isFirst" @onclick="() => MoveRecipe(factoryRecipe.Id, -1)">
+							<i class="bi bi-chevron-up"></i>
+						</button>
+						<button class="btn btn-outline-secondary" title="Move down"
+							disabled="@isLast" @onclick="() => MoveRecipe(factoryRecipe.Id, 1)">
+							<i class="bi bi-chevron-down"></i>
+						</button>
+					</div>
+					<div class="btn-group btn-group-sm" role="group" aria-label="Edit or delete recipe">
+						<button class="btn btn-outline-primary" title="Edit recipe"
+							@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
+							<i class="bi bi-pencil"></i>
+						</button>
+						<button class="btn @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
+							title="Delete recipe" @onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
+							<i class="bi @(pendingDeleteRecipeId == factoryRecipe.Id ? "bi-check-lg" : "bi-trash")"></i>
+						</button>
+					</div>
 				</div>
 			}
 		</div>

@@ -2,13 +2,29 @@
 @implements IDisposable
 
 <!-- Recipe Sections -->
-@foreach (var factoryRecipe in SelectedFactory.Recipes.OrderBy(r => r.Id))
+@{
+	var orderedRecipes = SelectedFactory.Recipes.OrderBy(r => r.Sorting).ThenBy(r => r.Id).ToList();
+}
+@for (var i = 0; i < orderedRecipes.Count; i++)
 {
+	var factoryRecipe = orderedRecipes[i];
+	var isFirst = i == 0;
+	var isLast = i == orderedRecipes.Count - 1;
 	<div class="row mb-4 border-bottom pb-3">
 		<!-- Recipe Header -->
 		<div class="col-12 mb-3">
 			<div class="d-flex justify-content-between align-items-center">
 				<div class="d-flex align-items-center">
+					<div class="btn-group-vertical btn-group-sm me-2" role="group" aria-label="Reorder recipe">
+						<button class="btn btn-outline-secondary py-0 px-1" title="Move up"
+							disabled="@isFirst" @onclick="() => MoveRecipe(factoryRecipe.Id, -1)">
+							<i class="bi bi-chevron-up"></i>
+						</button>
+						<button class="btn btn-outline-secondary py-0 px-1" title="Move down"
+							disabled="@isLast" @onclick="() => MoveRecipe(factoryRecipe.Id, 1)">
+							<i class="bi bi-chevron-down"></i>
+						</button>
+					</div>
 					<i class="bi bi-diagram-3 text-light me-2"></i>
 					<strong>@factoryRecipe.Recipe.Name</strong>
 				</div>
@@ -138,6 +154,12 @@
 	{
 		editingRecipeId = null;
 		editingRecipeMultiplier = 0;
+	}
+
+	private async Task MoveRecipe(int factoryRecipeId, int direction)
+	{
+		await FactoryService.MoveFactoryRecipeAsync(factoryRecipeId, direction);
+		await OnRecipeChanged.InvokeAsync();
 	}
 
 	private async Task RemoveRecipe(int factoryRecipeId)

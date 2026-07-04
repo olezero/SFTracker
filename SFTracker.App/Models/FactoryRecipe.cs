@@ -24,6 +24,11 @@ public class FactoryRecipe {
 	public bool IsActive { get; set; } = true;
 	public bool IsSlooped { get; set; } = false;
 
+	/// <summary>
+	/// Manual ordering of recipes within a factory (ascending). Ties fall back to Id.
+	/// </summary>
+	public double Sorting { get; set; } = 0.0;
+
 	[ForeignKey(nameof(FactoryId))]
 	public Factory Factory { get; set; } = null!;
 

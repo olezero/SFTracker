@@ -6,14 +6,9 @@
 	<div class="col-md-4">
 		<label class="form-label small">Add Recipe</label>
 		<div class="row g-2">
-			<div class="col-12">
-				<select class="form-select form-select-sm" @bind="newRecipeId">
-					<option value="">Select a recipe...</option>
-					@foreach (var recipe in AllRecipes)
-					{
-						<option value="@recipe.Id">@recipe.Name</option>
-					}
-				</select>
+			<div class="col-12 dropup-fix">
+				<RecipeSelector Recipes="@AllRecipes" @bind-SelectedRecipe="newRecipe"
+					Placeholder="Select a recipe..." CssClass="form-select-sm" />
 			</div>
 			<div class="col-12 btn-group btn-group-sm" role="group">
 				<button class="btn btn-secondary btn-sm" @onclick="AddRecipe">Add</button>
@@ -26,7 +21,7 @@
 	<div class="col-md-4">
 		<label class="form-label small">Add Custom Input</label>
 		<div class="row g-2">
-			<div class="col-12">
+			<div class="col-12 dropup-fix">
 				<PartSelector Parts="@AllParts" @bind-SelectedPart="newInputPart" Placeholder="Select input part..."
 					CssClass="form-select-sm" />
 			</div>
@@ -44,7 +39,7 @@
 	<div class="col-md-4">
 		<label class="form-label small">Add Custom Output</label>
 		<div class="row g-2">
-			<div class="col-12">
+			<div class="col-12 dropup-fix">
 				<PartSelector Parts="@AllParts" @bind-SelectedPart="newOutputPart" Placeholder="Select output part..."
 					CssClass="form-select-sm" />
 			</div>
@@ -81,7 +76,7 @@
 	private double newOutputAmount = 0;
 
 	// Recipe form fields
-	private int? newRecipeId;
+	private DbRecipe? newRecipe;
 	private double newRecipeMultiplier = 1.0;
 
 	// Recipe modals
@@ -92,9 +87,9 @@
 
 	private async Task AddRecipe()
 	{
-		if (SelectedFactory != null && newRecipeId.HasValue && newRecipeMultiplier > 0)
+		if (SelectedFactory != null && newRecipe != null && newRecipeMultiplier > 0)
 		{
-			await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, newRecipeId.Value, newRecipeMultiplier);
+			await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, newRecipe.Id, newRecipeMultiplier);
 			await OnRecipeAdded.InvokeAsync();
 			ResetRecipeForm();
 		}
@@ -122,7 +117,7 @@
 
 	private void ResetRecipeForm()
 	{
-		newRecipeId = null;
+		newRecipe = null;
 		newRecipeMultiplier = 1.0;
 	}
 
@@ -144,10 +139,10 @@
 	{
 		if (advancedRecipeModal != null)
 		{
-			if (newRecipeId.HasValue)
+			if (newRecipe != null)
 			{
 				// Pass in the selected recipe and multiplier
-				editModalSelectedRecipe = AllRecipes.FirstOrDefault(r => r.Id == newRecipeId.Value);
+				editModalSelectedRecipe = newRecipe;
 				StateHasChanged();
 			}
 
@@ -160,8 +155,8 @@
 		if (SelectedFactory != null)
 		{
 			await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, args.recipeId, args.multiplier, args.isSlooped);
-			// Clear new recipe id
-			newRecipeId = null;
+			// Clear new recipe
+			newRecipe = null;
 			editModalSelectedRecipe = null;
 			StateHasChanged();
 			await OnRecipeAdded.InvokeAsync();

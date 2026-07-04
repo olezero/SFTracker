@@ -58,3 +58,20 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+/* Force the Blazor.Bootstrap AutoComplete menu to open ABOVE the input for the
+   bottom-of-page Add forms. The component hardcodes Popper placement to
+   "bottom-start" and only re-flips after a keypress, which clips the list at
+   the page bottom on first open. These !important rules override Popper's inline
+   positioning so the list appears upward from the start. */
+.dropup-fix .autocomplete {
+    position: relative;
+}
+
+.dropup-fix .autocomplete-list {
+    transform: none !important;
+    top: auto !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    right: auto !important;
+    margin: 0 0 2px 0 !important;
+}

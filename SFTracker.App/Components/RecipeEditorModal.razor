@@ -8,13 +8,8 @@
 	<BodyTemplate>
 		<div class="mb-3">
 			<label for="recipeSelect" class="form-label">Recipe</label>
-			<select id="recipeSelect" class="form-select form-select-sm" @onchange="OnRecipeSelect">
-				<option value="">Select a recipe...</option>
-				@foreach (var recipe in Recipes)
-				{
-					<option value="@recipe.Id" selected="@(CurrentRecipe?.Id == recipe.Id)">@recipe.Name</option>
-				}
-			</select>
+			<RecipeSelector Recipes="@Recipes" SelectedRecipe="@CurrentRecipe"
+				SelectedRecipeChanged="OnRecipeSelect" CssClass="form-select-sm" />
 		</div>
 		@if (CurrentRecipe != null)
 		{
@@ -116,10 +111,9 @@
 		}
 	}
 
-	private void OnRecipeSelect(ChangeEventArgs e)
+	private void OnRecipeSelect(DbRecipe? recipe)
 	{
-		var selectedId = int.TryParse(e.Value?.ToString(), out var id) ? id : (int?)null;
-		CurrentRecipe = Recipes.FirstOrDefault(r => r.Id == selectedId);
+		CurrentRecipe = recipe;
 		Multiplier = 1.0;
 		IsSlooped = false;
 		PopulateFieldsFromMultiplier();

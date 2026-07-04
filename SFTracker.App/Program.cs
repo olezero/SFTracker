@@ -1,4 +1,3 @@
-using Blzr.BootstrapSelect;
 using Microsoft.EntityFrameworkCore;
 using SFTracker.Components;
 using SFTracker.Data;
@@ -16,9 +15,6 @@ builder.Services.Configure<HostOptions>(options => {
 });
 
 builder.Services.AddBlazorBootstrap();
-builder.Services.AddBootstrapSelect(defaults => {
-	defaults.ShowSearch = true;
-});
 
 // Add Entity Framework
 builder.Services.AddDbContext<SFTrackerDbContext>((options) => {

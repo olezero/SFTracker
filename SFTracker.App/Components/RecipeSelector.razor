@@ -1,0 +1,52 @@
+@using SFTracker.Models
+@using BlazorBootstrap
+
+<AutoComplete TItem="DbRecipe"
+			  @bind-Value="selectedText"
+			  DataProvider="RecipesDataProvider"
+			  PropertyName="Name"
+			  Placeholder="@Placeholder"
+			  OnChanged="OnRecipeSelected"
+			  class="@CssClass" />
+
+@code {
+	[Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = new List<DbRecipe>();
+	[Parameter] public DbRecipe? SelectedRecipe { get; set; }
+	[Parameter] public EventCallback<DbRecipe?> SelectedRecipeChanged { get; set; }
+	[Parameter] public string Placeholder { get; set; } = "Select a recipe...";
+	[Parameter] public string CssClass { get; set; } = "";
+
+	private string selectedText = string.Empty;
+
+	protected override void OnParametersSet()
+	{
+		// Keep the textbox in sync when the bound recipe is set/cleared externally
+		selectedText = SelectedRecipe?.Name ?? string.Empty;
+	}
+
+	private async Task<AutoCompleteDataProviderResult<DbRecipe>> RecipesDataProvider(AutoCompleteDataProviderRequest<DbRecipe> request)
+	{
+		var filter = request.Filter?.Value ?? string.Empty;
+
+		// Match on recipe name OR any output part name, so you can search by what a recipe produces.
+		var data = (string.IsNullOrWhiteSpace(filter)
+			? Recipes
+			: Recipes.Where(r =>
+				r.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)
+				|| r.Outputs.Any(o => o.Part.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))))
+			.OrderBy(r => r.Name)
+			.ToList();
+
+		return await Task.FromResult(new AutoCompleteDataProviderResult<DbRecipe> {
+			Data = data,
+			TotalCount = data.Count
+		});
+	}
+
+	private async Task OnRecipeSelected(DbRecipe? recipe)
+	{
+		SelectedRecipe = recipe;
+		selectedText = recipe?.Name ?? string.Empty;
+		await SelectedRecipeChanged.InvokeAsync(recipe);
+	}
+}

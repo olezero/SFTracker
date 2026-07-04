@@ -1,32 +1,49 @@
 @using SFTracker.Models
+@using BlazorBootstrap
 
-<select class="form-select @CssClass" @bind="SelectedPartId" @bind:after="OnPartChanged">
-	<option value="">@Placeholder</option>
-	@foreach (var part in Parts.OrderBy(p => p.Name))
-	{
-		<option value="@part.Id">@part.Name</option>
-	}
-</select>
+<AutoComplete TItem="DbPart"
+			  @bind-Value="selectedText"
+			  DataProvider="PartsDataProvider"
+			  PropertyName="Name"
+			  Placeholder="@Placeholder"
+			  OnChanged="OnPartSelected"
+			  class="@CssClass" />
 
 @code {
 	[Parameter] public List<DbPart> Parts { get; set; } = new();
 	[Parameter] public DbPart? SelectedPart { get; set; }
-	[Parameter] public EventCallback<DbPart> SelectedPartChanged { get; set; }
+	[Parameter] public EventCallback<DbPart?> SelectedPartChanged { get; set; }
 	[Parameter] public string Placeholder { get; set; } = "Select a part...";
 	[Parameter] public string CssClass { get; set; } = "";
 
-	private int? SelectedPartId
+	private string selectedText = string.Empty;
+
+	protected override void OnParametersSet()
 	{
-		get => SelectedPart?.Id;
-		set
-		{
-			var part = value.HasValue ? Parts.FirstOrDefault(p => p.Id == value.Value) : null;
-			SelectedPart = part;
-		}
+		// Keep the textbox in sync when the bound part is set/cleared externally
+		selectedText = SelectedPart?.Name ?? string.Empty;
 	}
 
-	private async Task OnPartChanged()
+	private async Task<AutoCompleteDataProviderResult<DbPart>> PartsDataProvider(AutoCompleteDataProviderRequest<DbPart> request)
 	{
-		await SelectedPartChanged.InvokeAsync(SelectedPart);
+		var filter = request.Filter?.Value ?? string.Empty;
+
+		var data = (string.IsNullOrWhiteSpace(filter)
+			? Parts
+			: Parts.Where(p => p.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+			.OrderBy(p => p.Name)
+			.ToList();
+
+		return await Task.FromResult(new AutoCompleteDataProviderResult<DbPart> {
+			Data = data,
+			TotalCount = data.Count
+		});
+	}
+
+	private async Task OnPartSelected(DbPart? part)
+	{
+		SelectedPart = part;
+		selectedText = part?.Name ?? string.Empty;
+		await SelectedPartChanged.InvokeAsync(part);
 	}
 }

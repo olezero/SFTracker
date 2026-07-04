@@ -151,6 +151,38 @@ public class FactoryService {
 		}
 	}
 
+	/// <summary>
+	/// Move a recipe one slot up (direction = -1) or down (direction = +1) within its factory.
+	/// Reindexes the factory's active recipes to contiguous Sorting values.
+	/// </summary>
+	public async Task MoveFactoryRecipeAsync(int factoryRecipeId, int direction) {
+		var target = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
+		if (target == null) {
+			return;
+		}
+
+		// Order the same way the UI does: by Sorting, then Id. Only active recipes are shown.
+		var siblings = await m_context.FactoryRecipes
+			.Where(r => r.FactoryId == target.FactoryId && r.IsActive)
+			.OrderBy(r => r.Sorting)
+			.ThenBy(r => r.Id)
+			.ToListAsync();
+
+		var index = siblings.FindIndex(r => r.Id == factoryRecipeId);
+		var newIndex = index + direction;
+		if (index < 0 || newIndex < 0 || newIndex >= siblings.Count) {
+			return; // Already at an edge or not found - nothing to do.
+		}
+
+		(siblings[index], siblings[newIndex]) = (siblings[newIndex], siblings[index]);
+
+		for (int i = 0; i < siblings.Count; i++) {
+			siblings[i].Sorting = i;
+		}
+
+		await m_context.SaveChangesAsync();
+	}
+
 	public async Task RemoveFactoryRecipeAsync(int factoryRecipeId) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {

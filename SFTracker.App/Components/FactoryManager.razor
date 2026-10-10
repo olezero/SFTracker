@@ -3,7 +3,6 @@
 @using SFTracker.Constants
 @inject FactoryService FactoryService
 @inject IJSRuntime JSRuntime
-@implements IDisposable
 
 <style>
 	.sortable-factory-item {
@@ -25,14 +24,18 @@
 	}
 </style>
 
-<div class="row">
-	<div class="col-md-4">
+<div class="row g-3">
+	<div class="col-lg-3">
 		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory"
 			SelectedFactoryChanged="@OnFactorySelected" OnFactoryListChanged="@OnFactoryListChanged"
 			OnFactoryOperation="@OnFactoryOperation" />
-	</div>
 
-	<div class="col-md-8">
+		<div class="mt-3">
+			<ResourceBalance @ref="resourceBalance" />
+		</div>
+	</div>
+	
+	<div class="col-lg-9">
 		<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes"
 			OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
 			OnRecipeChanged="@LoadDataAndRefreshBalance" OnInputOutputChanged="@LoadDataAndRefreshBalance"
@@ -42,18 +45,13 @@
 </div>
 
 @code {
-	private ResourceBalance? ResourceBalanceComponent { get; set; }
+	private ResourceBalance? resourceBalance;
 	private FactoryList? factoryListComponent;
 
 	private List<Factory> factories = new();
 	private List<DbPart> allParts = new();
 	private List<DbRecipe> allRecipes = new();
 	private Factory? selectedFactory;
-
-	public void SetResourceBalanceComponent(ResourceBalance component)
-	{
-		ResourceBalanceComponent = component;
-	}
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -81,9 +79,9 @@
 
 	private async Task TriggerBalanceRefresh()
 	{
-		if (ResourceBalanceComponent != null)
+		if (resourceBalance != null)
 		{
-			await ResourceBalanceComponent.RefreshBalanceDebounced();
+			await resourceBalance.RefreshBalanceDebounced();
 		}
 	}
 
@@ -134,11 +132,5 @@
 		{
 			await factoryListComponent.DeleteSelectedFactory();
 		}
-	}
-
-	public void Dispose()
-	{
-		// Clean up component references to prevent memory leaks
-		ResourceBalanceComponent = null;
 	}
 }

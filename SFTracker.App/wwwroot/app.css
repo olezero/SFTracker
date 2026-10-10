@@ -107,3 +107,25 @@ h1:focus {
 .recipe-drag-handle:active {
     cursor: grabbing !important;
 }
+
+/* Calmer, dark-theme-friendly form controls. Darkly ships white inputs which
+   jump out against the dark UI; tone them down and drop the bright focus glow.
+   Covers the searchable dropdowns too (their input is a .form-control). */
+.form-control,
+.form-select {
+    background-color: #2c2c2c;
+    border-color: #454545;
+    color: #dcdcdc;
+}
+
+.form-control::placeholder {
+    color: #7a7a7a;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #2c2c2c;
+    color: #dcdcdc;
+    border-color: #6c6c6c;
+    box-shadow: none;
+}

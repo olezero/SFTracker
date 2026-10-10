@@ -6,10 +6,6 @@
 	Handle=".recipe-drag-handle" Class="recipe-sortable" OnUpdate="OnRecipeListUpdate">
 	<ItemTemplate>
 		@{
-			var ordered = OrderedRecipes;
-			var idx = ordered.FindIndex(r => r.Id == factoryRecipe.Id);
-			var isFirst = idx <= 0;
-			var isLast = idx == ordered.Count - 1;
 			// Main product = first output (index 0); recipes list their primary product first.
 			var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
 		}
@@ -91,28 +87,16 @@
 			</div>
 		</div>
 
-		<!-- Reorder / edit / delete actions (far right, vertically centered) -->
-		<div class="ms-3 flex-shrink-0 d-flex flex-column" style="gap: 3px;">
-			<div class="btn-group btn-group-sm" role="group" aria-label="Reorder recipe">
-				<button class="btn btn-outline-secondary" title="Move up"
-					disabled="@isFirst" @onclick="() => MoveRecipe(factoryRecipe.Id, -1)">
-					<i class="bi bi-chevron-up"></i>
-				</button>
-				<button class="btn btn-outline-secondary" title="Move down"
-					disabled="@isLast" @onclick="() => MoveRecipe(factoryRecipe.Id, 1)">
-					<i class="bi bi-chevron-down"></i>
-				</button>
-			</div>
-			<div class="btn-group btn-group-sm" role="group" aria-label="Edit or delete recipe">
-				<button class="btn btn-outline-primary" title="Edit recipe"
-					@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
-					<i class="bi bi-pencil"></i>
-				</button>
-				<button class="btn @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
-					title="Delete recipe" @onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
-					<i class="bi @(pendingDeleteRecipeId == factoryRecipe.Id ? "bi-check-lg" : "bi-trash")"></i>
-				</button>
-			</div>
+		<!-- Edit / delete actions (far right, vertically centered) -->
+		<div class="ms-3 flex-shrink-0 btn-group btn-group-sm" role="group" aria-label="Edit or delete recipe">
+			<button class="btn btn-outline-primary" title="Edit recipe"
+				@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
+				<i class="bi bi-pencil"></i>
+			</button>
+			<button class="btn @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
+				title="Delete recipe" @onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
+				<i class="bi @(pendingDeleteRecipeId == factoryRecipe.Id ? "bi-check-lg" : "bi-trash")"></i>
+			</button>
 		</div>
 		</div>
 	</ItemTemplate>
@@ -172,12 +156,6 @@
 	{
 		editingRecipeId = null;
 		editingRecipeMultiplier = 0;
-	}
-
-	private async Task MoveRecipe(int factoryRecipeId, int direction)
-	{
-		await FactoryService.MoveFactoryRecipeAsync(factoryRecipeId, direction);
-		await OnRecipeChanged.InvokeAsync();
 	}
 
 	private async Task OnRecipeListUpdate(SortableListEventArgs args)

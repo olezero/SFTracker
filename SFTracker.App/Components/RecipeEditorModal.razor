@@ -4,7 +4,7 @@
 @using BlazorBootstrap.Components
 @inject IJSRuntime JSRuntime
 
-<Modal @ref="modalRef" Title="@(IsEditMode ? "Edit Factory Recipe" : "Add Factory Recipe")" Size="ModalSize.ExtraLarge">
+<Modal @ref="modalRef" Title="@(IsEditMode ? "Edit Factory Recipe" : "Add Factory Recipe")" Size="ModalSize.ExtraLarge" OnShown="OnModalShown">
 	<BodyTemplate>
 		<div class="mb-3">
 			<label for="recipeSelect" class="form-label">Recipe</label>
@@ -38,7 +38,8 @@
 							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="flex-grow-1">@input.Part.Name</span>
-							<input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;"
+							<input type="number" id="@InputElementId(input.Id)"
+								class="form-control ms-2 form-control-sm @(HighlightInputId == input.Id ? "border-info" : "")" style="width: 120px;"
 								value="@FormatNumber(InputValues[input.Id])"
 								@oninput="e => OnInputOutputChange(input.Id, true, e)" min="0">
 						</div>
@@ -52,7 +53,8 @@
 							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="flex-grow-1">@output.Part.Name</span>
-							<input type="number" class="form-control ms-2 form-control-sm" style="width: 120px;"
+							<input type="number" id="@OutputElementId(output.Id)"
+								class="form-control ms-2 form-control-sm @(HighlightOutputId == output.Id ? "border-info" : "")" style="width: 120px;"
 								value="@FormatNumber(OutputValues[output.Id])"
 								@oninput="e => OnInputOutputChange(output.Id, false, e)" min="0">
 						</div>
@@ -75,6 +77,10 @@
 	[Parameter] public DbRecipe? SelectedRecipe { get; set; }
 	[Parameter] public double? InitialMultiplier { get; set; }
 	[Parameter] public bool? InitialIsSlooped { get; set; }
+	/// <summary>Input (DbRecipeInput id) to highlight and focus when the modal opens.</summary>
+	[Parameter] public int? HighlightInputId { get; set; }
+	/// <summary>Output (DbRecipeOutput id) to highlight and focus when the modal opens.</summary>
+	[Parameter] public int? HighlightOutputId { get; set; }
 	[Parameter] public EventCallback<(int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId)> OnSave { get; set; }
 
 	private Modal modalRef = default!;
@@ -205,6 +211,18 @@
 	public async Task ShowModal()
 	{
 		await modalRef.ShowAsync();
+	}
+
+	private static string InputElementId(int inputId) => $"recipe-editor-input-{inputId}";
+	private static string OutputElementId(int outputId) => $"recipe-editor-output-{outputId}";
+
+	private async Task OnModalShown()
+	{
+		string? elementId = HighlightInputId is int inputId ? InputElementId(inputId)
+			: HighlightOutputId is int outputId ? OutputElementId(outputId)
+			: null;
+		if (elementId != null)
+			await JSRuntime.InvokeVoidAsync("sftracker.focusAndSelect", elementId);
 	}
 
 	private async Task Save()

@@ -48,18 +48,34 @@
 					@foreach (var input in factoryRecipe.Recipe.Inputs)
 					{
 						var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
-						<div class="d-flex align-items-center mb-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
-							@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)"
-							title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
-								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-							<span class="me-2 flex-grow-1">@input.Part.Name</span>
-							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark") me-2">@GetRecipeInputText(factoryRecipe, input)</span>
-							@if (!isEnabled)
-							{
-								<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
-									title="Disabled from balance calculation"></i>
-							}
+						var producers = GetRecipesProducing(input.PartId);
+						<div class="d-flex align-items-center mb-1">
+							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+								title="Click to edit this rate"
+								@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, input.Id, null)">
+								<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
+									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+								<span class="me-2 flex-grow-1">@input.Part.Name</span>
+								<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeInputText(factoryRecipe, input)</span>
+							</div>
+							<div class="btn-group ms-2 me-2 flex-shrink-0 ingredient-actions" role="group">
+								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
+									disabled="@(producers.Count == 0)" title="Add a recipe that produces @input.Part.Name">
+									<i class="bi bi-plus-lg"></i>
+								</button>
+								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;">
+									<li><h6 class="dropdown-header">Produces @input.Part.Name</h6></li>
+									@foreach (var recipe in producers)
+									{
+										<li><button type="button" class="dropdown-item" @onclick="() => AddRecipeForPart(recipe, input.PartId, asProducer: true)">@recipe.Name</button></li>
+									}
+								</ul>
+								<button type="button" class="btn btn-outline-secondary"
+									title="@(isEnabled ? "Hide from balance calculation" : "Show in balance calculation")"
+									@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)">
+									<i class="bi @(isEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+								</button>
+							</div>
 						</div>
 					}
 				</div>
@@ -69,18 +85,34 @@
 					@foreach (var output in factoryRecipe.Recipe.Outputs)
 					{
 						var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
-						<div class="d-flex align-items-center mb-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
-							@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)"
-							title="@(isEnabled ? "Click to disable from balance calculation" : "Click to enable in balance calculation")">
-							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
-								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-							<span class="me-2 flex-grow-1">@output.Part.Name</span>
-							<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeOutputText(factoryRecipe, output)</span>
-							@if (!isEnabled)
-							{
-								<i class="bi bi-eye-slash text-muted" style="font-size: 12px;"
-									title="Disabled from balance calculation"></i>
-							}
+						var consumers = GetRecipesConsuming(output.PartId);
+						<div class="d-flex align-items-center mb-1">
+							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
+								title="Click to edit this rate"
+								@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, null, output.Id)">
+								<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
+									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+								<span class="me-2 flex-grow-1">@output.Part.Name</span>
+								<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeOutputText(factoryRecipe, output)</span>
+							</div>
+							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group">
+								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
+									disabled="@(consumers.Count == 0)" title="Add a recipe that consumes @output.Part.Name">
+									<i class="bi bi-plus-lg"></i>
+								</button>
+								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;">
+									<li><h6 class="dropdown-header">Consumes @output.Part.Name</h6></li>
+									@foreach (var recipe in consumers)
+									{
+										<li><button type="button" class="dropdown-item" @onclick="() => AddRecipeForPart(recipe, output.PartId, asProducer: false)">@recipe.Name</button></li>
+									}
+								</ul>
+								<button type="button" class="btn btn-outline-secondary"
+									title="@(isEnabled ? "Hide from balance calculation" : "Show in balance calculation")"
+									@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)">
+									<i class="bi @(isEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+								</button>
+							</div>
 						</div>
 					}
 				</div>
@@ -114,6 +146,7 @@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
 	InitialIsSlooped="editModalInitialIsSlooped"
+	HighlightInputId="editModalHighlightInputId" HighlightOutputId="editModalHighlightOutputId"
 	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
 @code {
@@ -138,6 +171,8 @@
 	private double? editModalInitialMultiplier;
 	private bool? editModalInitialIsSlooped;
 	private int? editModalFactoryRecipeId;
+	private int? editModalHighlightInputId;
+	private int? editModalHighlightOutputId;
 
 	// Delete confirmation state
 	private int? pendingDeleteRecipeId = null;
@@ -249,7 +284,7 @@
 		await OnRecipeChanged.InvokeAsync();
 	}
 
-	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe)
+	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe, int? highlightInputId = null, int? highlightOutputId = null)
 	{
 		if (advancedEditRecipeModal != null)
 		{
@@ -258,6 +293,8 @@
 			editModalInitialMultiplier = factoryRecipe.Multiplier;
 			editModalInitialIsSlooped = factoryRecipe.IsSlooped;
 			editModalFactoryRecipeId = factoryRecipe.Id;
+			editModalHighlightInputId = highlightInputId;
+			editModalHighlightOutputId = highlightOutputId;
 			StateHasChanged(); // Trigger re-render to pass new parameters
 			await advancedEditRecipeModal.ShowModal();
 		}
@@ -346,8 +383,8 @@
 			.OrderBy(o => o.Id)
 			.FirstOrDefault(o => FactoryService.IsRecipeOutputEnabled(factoryRecipe, o.Id));
 
-	// Demand for partId in the selected factory that is not met by anything other than factoryRecipe.
-	private double GetUncoveredDemand(FactoryRecipe factoryRecipe, int partId)
+	// Demand for partId in the selected factory that is not met by anything other than the excluded recipe.
+	private double GetUncoveredDemand(FactoryRecipe? excludedRecipe, int partId)
 	{
 		var demand = SelectedFactory.Inputs.Where(i => i.PartId == partId).Sum(i => i.AmountPerMinute);
 		var supply = SelectedFactory.Outputs.Where(o => o.PartId == partId).Sum(o => o.AmountPerMinute);
@@ -358,7 +395,7 @@
 				.Where(ri => ri.PartId == partId && FactoryService.IsRecipeInputEnabled(other, ri.Id))
 				.Sum(ri => ri.GetQuantityPerMinute(other));
 
-			if (other.Id == factoryRecipe.Id)
+			if (excludedRecipe != null && other.Id == excludedRecipe.Id)
 				continue;
 
 			supply += other.Recipe.Outputs
@@ -367,6 +404,39 @@
 		}
 
 		return demand - supply;
+	}
+
+	private List<DbRecipe> GetRecipesProducing(int partId) =>
+		AllRecipes.Where(r => r.Outputs.Any(o => o.PartId == partId)).OrderBy(r => r.Name).ToList();
+
+	private List<DbRecipe> GetRecipesConsuming(int partId) =>
+		AllRecipes.Where(r => r.Inputs.Any(i => i.PartId == partId)).OrderBy(r => r.Name).ToList();
+
+	/// <summary>
+	/// Add a recipe picked from an ingredient's dropdown. As a producer it is sized to cover the
+	/// factory's current shortfall of the part; as a consumer it is sized to eat the current surplus.
+	/// Falls back to 1x when there is no gap to fill.
+	/// </summary>
+	private async Task AddRecipeForPart(DbRecipe recipe, int partId, bool asProducer)
+	{
+		var multiplier = 1.0;
+		var gap = GetUncoveredDemand(null, partId); // positive = shortfall, negative = surplus
+
+		if (asProducer)
+		{
+			var perMachine = recipe.Outputs.Where(o => o.PartId == partId).Sum(o => o.GetQuantityPerMinute(1));
+			if (gap > 0.0001 && perMachine > 0)
+				multiplier = gap / perMachine;
+		}
+		else
+		{
+			var perMachine = recipe.Inputs.Where(i => i.PartId == partId).Sum(i => i.GetQuantityPerMinute(1));
+			if (-gap > 0.0001 && perMachine > 0)
+				multiplier = -gap / perMachine;
+		}
+
+		await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, recipe.Id, multiplier);
+		await OnRecipeChanged.InvokeAsync();
 	}
 
 	private string GetDemandButtonTitle(FactoryRecipe factoryRecipe, double? demandMultiplier)

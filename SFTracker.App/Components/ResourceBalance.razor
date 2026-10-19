@@ -125,7 +125,10 @@
 
 
 @code {
+	[Parameter] public int GameId { get; set; }
+
 	private List<Factory> factories = new();
+	private int lastGameId = -1;
 	private List<PartBalance> partBalances = new();
 	private bool isLoading = true;
 	private CancellationTokenSource? _debounceTokenSource;
@@ -155,10 +158,16 @@
 		public string Tier { get; set; } = "";
 	}
 
-	protected override async Task OnInitializedAsync()
+	protected override async Task OnParametersSetAsync()
 	{
-		await RefreshBalance();
-		await LoadData();
+		// Runs on first render (GameId 0 -> empty) and again whenever the active game changes.
+		// Switching game also invalidates the per-factory selection.
+		if (GameId != lastGameId)
+		{
+			lastGameId = GameId;
+			selectedFactoryBacking = "all";
+			await RefreshBalance();
+		}
 	}
 
 
@@ -193,10 +202,10 @@
 		else
 		{
 			// Use all factories
-			factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+			factories = await FactoryService.GetAllFactoriesAsync(GameId).ConfigureAwait(false);
 		}
 
-		@* var factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false); *@
+		@* var factories = await FactoryService.GetAllFactoriesAsync(GameId).ConfigureAwait(false); *@
 		var allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
 
 		// Get all parts that are used in any factory (inputs, outputs, or recipes)
@@ -318,6 +327,6 @@
 
 	private async Task LoadData()
 	{
-		factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		factories = await FactoryService.GetAllFactoriesAsync(GameId).ConfigureAwait(false);
 	}
 }

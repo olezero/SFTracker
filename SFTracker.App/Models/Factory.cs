@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace SFTracker.Models;
 
 [Table("Factories")]
-[Index(nameof(Name), IsUnique = true)]
+[Index(nameof(GameId), nameof(Name), IsUnique = true)]
+[Index(nameof(GameId))]
 [Index(nameof(NetworkId))]
 [Index(nameof(Sorting))]
 public class Factory {
@@ -17,6 +18,9 @@ public class Factory {
 	public string Name { get; set; } = string.Empty;
 
 	public double Sorting { get; set; } = 0.0;
+
+	// The game (save) this factory belongs to
+	public int GameId { get; set; }
 
 	// Optional association with a Network
 	public int? NetworkId { get; set; } = null;
@@ -34,6 +38,9 @@ public class Factory {
 	[InverseProperty(nameof(FactoryRecipe.Factory))]
 	public ICollection<FactoryRecipe> Recipes { get; set; } = [];
 
+	[ForeignKey(nameof(GameId))]
+	public Game Game { get; set; } = null!;
+
 	[ForeignKey(nameof(NetworkId))]
-	public Network Network { get; set; } = null!;
+	public Network? Network { get; set; }
 }

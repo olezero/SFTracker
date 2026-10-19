@@ -5,6 +5,7 @@ namespace SFTracker.Data;
 
 public class SFTrackerDbContext(DbContextOptions<SFTrackerDbContext> options) : DbContext(options) {
 	public DbSet<DbPart> Parts { get; set; }
+	public DbSet<Game> Games { get; set; }
 	public DbSet<Factory> Factories { get; set; }
 	public DbSet<FactoryInput> FactoryInputs { get; set; }
 	public DbSet<FactoryOutput> FactoryOutputs { get; set; }

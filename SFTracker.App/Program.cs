@@ -26,6 +26,7 @@ builder.Services.AddDbContext<SFTrackerDbContext>((options) => {
 // Add services
 builder.Services.AddSingleton<GameInfoService>();
 builder.Services.AddScoped<FactoryService>();
+builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<DataImportService>();
 
 var app = builder.Build();
@@ -50,6 +51,10 @@ await context.Database.EnsureCreatedAsync();
 var dataImportService = services.GetRequiredService<DataImportService>();
 await dataImportService.ImportPartsAsync();
 await dataImportService.ImportRecipesAsync();
+
+// Make sure there is at least one game to put factories in
+var gameService = services.GetRequiredService<GameService>();
+await gameService.EnsureDefaultGameAsync();
 
 app.UseAntiforgery();
 app.MapStaticAssets();

@@ -11,8 +11,9 @@ public class FactoryService {
 		m_context = context;
 	}
 
-	public async Task<List<Factory>> GetAllFactoriesAsync() {
+	public async Task<List<Factory>> GetAllFactoriesAsync(int gameId) {
 		return await m_context.Factories
+			.Where(f => f.GameId == gameId)
 			.Include(f => f.Inputs)
 				.ThenInclude(i => i.Part)
 				.OrderBy(i => i.Name)
@@ -60,8 +61,8 @@ public class FactoryService {
 			.FirstOrDefaultAsync(f => f.Id == id);
 	}
 
-	public async Task<Factory> CreateFactoryAsync(string name) {
-		var factory = new Factory { Name = name };
+	public async Task<Factory> CreateFactoryAsync(string name, int gameId) {
+		var factory = new Factory { Name = name, GameId = gameId };
 		m_context.Factories.Add(factory);
 		await m_context.SaveChangesAsync();
 		return factory;
@@ -184,47 +185,11 @@ public class FactoryService {
 		}
 	}
 
-	/// <summary>
-	/// Calculate the global resource surplus/deficit for all parts
-	/// </summary>
-	public async Task<Dictionary<string, double>> CalculateGlobalResourceBalanceAsync() {
-		var balance = new Dictionary<string, double>();
-
-		// Get all factories with their inputs and outputs
-		var factories = await GetAllFactoriesAsync();
-
-		foreach (var factory in factories) {
-			// Subtract inputs (consumption)
-			foreach (var input in factory.Inputs) {
-				if (!balance.ContainsKey(input.Part.Name)) {
-					balance[input.Part.Name] = 0;
-				}
-
-				balance[input.Part.Name] -= input.AmountPerMinute;
-			}
-
-			// Add outputs (production)
-			foreach (var output in factory.Outputs) {
-				if (!balance.ContainsKey(output.Part.Name)) {
-					balance[output.Part.Name] = 0;
-				}
-
-				balance[output.Part.Name] += output.AmountPerMinute;
-			}
-		}
-
-		return balance;
-	}
-
 	public async Task<List<DbPart>> GetAllPartsAsync() {
 		return await m_context.Parts
 			.Where(p => !p.Name.Contains("FICSMAS"))
 			.OrderBy(p => p.Name)
 			.ToListAsync();
-	}
-
-	public List<DbRecipe> GetAllRecipes() {
-		return GetAllRecipesAsync().GetAwaiter().GetResult();
 	}
 
 	// TODO - this should only returnt he recipe, need a seperate method to get recipe details methinks - or we could just cache the result

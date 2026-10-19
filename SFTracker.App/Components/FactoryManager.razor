@@ -2,6 +2,7 @@
 @using SFTracker.Services
 @using SFTracker.Constants
 @inject FactoryService FactoryService
+@inject GameService GameService
 @inject IJSRuntime JSRuntime
 
 <style>
@@ -24,6 +25,9 @@
 	}
 </style>
 
+<GameSelector Games="@games" SelectedGame="@selectedGame" SelectedGameChanged="@OnGameSelected"
+	OnGameOperation="@OnGameOperation" />
+
 <div class="row g-3">
 	<div class="col-lg-3">
 		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory"
@@ -31,7 +35,7 @@
 			OnFactoryOperation="@OnFactoryOperation" />
 
 		<div class="mt-3">
-			<ResourceBalance @ref="resourceBalance" />
+			<ResourceBalance @ref="resourceBalance" GameId="@(selectedGame?.Id ?? 0)" />
 		</div>
 	</div>
 	
@@ -48,6 +52,9 @@
 	private ResourceBalance? resourceBalance;
 	private FactoryList? factoryListComponent;
 
+	private List<Game> games = new();
+	private Game? selectedGame;
+
 	private List<Factory> factories = new();
 	private List<DbPart> allParts = new();
 	private List<DbRecipe> allRecipes = new();
@@ -55,12 +62,21 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		await LoadGames();
+		selectedGame = await GameService.GetMostRecentGameAsync();
 		await LoadData();
+	}
+
+	private async Task LoadGames()
+	{
+		games = await GameService.GetAllGamesAsync().ConfigureAwait(false);
 	}
 
 	private async Task LoadData()
 	{
-		factories = await FactoryService.GetAllFactoriesAsync().ConfigureAwait(false);
+		factories = selectedGame == null
+			? new List<Factory>()
+			: await FactoryService.GetAllFactoriesAsync(selectedGame.Id).ConfigureAwait(false);
 		allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
 		allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
 
@@ -82,6 +98,41 @@
 		if (resourceBalance != null)
 		{
 			await resourceBalance.RefreshBalanceDebounced();
+		}
+	}
+
+	private async Task OnGameSelected(Game? game)
+	{
+		selectedGame = game;
+		selectedFactory = null;
+
+		if (game != null)
+		{
+			await GameService.TouchGameAsync(game.Id);
+		}
+		// ResourceBalance refreshes itself when its GameId parameter changes on the re-render.
+		await LoadData();
+	}
+
+	private async Task OnGameOperation((Game game, string operation) args)
+	{
+		switch (args.operation)
+		{
+			case "create":
+				var created = await GameService.CreateGameAsync(args.game.Name);
+				await LoadGames();
+				await OnGameSelected(games.FirstOrDefault(g => g.Id == created.Id));
+				return;
+			case "rename":
+				await GameService.RenameGameAsync(args.game.Id, args.game.Name);
+				await LoadGames();
+				selectedGame = games.FirstOrDefault(g => g.Id == args.game.Id);
+				return;
+			case "delete":
+				await GameService.DeleteGameAsync(args.game.Id);
+				await LoadGames();
+				await OnGameSelected(await GameService.GetMostRecentGameAsync());
+				return;
 		}
 	}
 
@@ -108,7 +159,11 @@
 		switch (args.operation)
 		{
 			case "create":
-				await FactoryService.CreateFactoryAsync(args.factory.Name);
+				if (selectedGame == null)
+				{
+					return;
+				}
+				await FactoryService.CreateFactoryAsync(args.factory.Name, selectedGame.Id);
 				break;
 			case "update":
 				await FactoryService.UpdateFactoryAsync(args.factory);

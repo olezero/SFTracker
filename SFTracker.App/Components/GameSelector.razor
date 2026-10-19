@@ -1,0 +1,140 @@
+@inject IJSRuntime JSRuntime
+
+<!-- Top bar: brand + active game picker. Everything below it is scoped to the selected game. -->
+<div class="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded border border-secondary bg-dark">
+	<span class="fw-bold fs-5 me-3">SFTracker</span>
+	<label class="text-muted mb-0" for="gameSelect">Game</label>
+	<select id="gameSelect" class="form-select form-select-sm w-auto" value="@SelectedGame?.Id" @onchange="OnSelectChanged">
+		@foreach (var game in Games)
+		{
+			<option value="@game.Id" selected="@(game.Id == SelectedGame?.Id)">@game.Name</option>
+		}
+	</select>
+	<button class="btn btn-secondary btn-sm" title="New game" @onclick="ShowCreateModal">
+		<i class="bi bi-plus"></i> New Game
+	</button>
+	<button class="btn btn-secondary btn-sm" title="Rename game" @onclick="ShowRenameModal" disabled="@(SelectedGame == null)">
+		<i class="bi bi-pencil"></i>
+	</button>
+	<button class="btn btn-secondary btn-sm" title="Delete game and all its factories" @onclick="DeleteGame" disabled="@(SelectedGame == null)">
+		<i class="bi bi-trash"></i>
+	</button>
+</div>
+
+<Modal @ref="createModal" Title="New Game">
+	<BodyTemplate>
+		<div class="mb-3">
+			<label for="gameName" class="form-label">Game Name</label>
+			<input type="text" class="form-control" id="gameName" @bind="editName" @bind:event="oninput"
+				@onkeydown="OnCreateKeyDown" placeholder="e.g. Save 2 - Dune Desert">
+		</div>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideCreateModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="CreateGame">Create Game</Button>
+	</FooterTemplate>
+</Modal>
+
+<Modal @ref="renameModal" Title="Rename Game">
+	<BodyTemplate>
+		<div class="mb-3">
+			<label for="gameNameEdit" class="form-label">Game Name</label>
+			<input type="text" class="form-control" id="gameNameEdit" @bind="editName" @bind:event="oninput"
+				@onkeydown="OnRenameKeyDown">
+		</div>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="HideRenameModal">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="RenameGame">Save Changes</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+	[Parameter] public List<Game> Games { get; set; } = new();
+	[Parameter] public Game? SelectedGame { get; set; }
+	[Parameter] public EventCallback<Game?> SelectedGameChanged { get; set; }
+	[Parameter] public EventCallback<(Game game, string operation)> OnGameOperation { get; set; }
+
+	private Modal createModal = default!;
+	private Modal renameModal = default!;
+	private string editName = "";
+
+	private async Task OnSelectChanged(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out var id))
+		{
+			var game = Games.FirstOrDefault(g => g.Id == id);
+			if (game != null && game.Id != SelectedGame?.Id)
+			{
+				await SelectedGameChanged.InvokeAsync(game);
+			}
+		}
+	}
+
+	private void ShowCreateModal()
+	{
+		editName = "";
+		createModal.ShowAsync();
+	}
+
+	private async Task HideCreateModal()
+	{
+		await createModal.HideAsync();
+	}
+
+	private async Task CreateGame()
+	{
+		if (string.IsNullOrWhiteSpace(editName))
+		{
+			return;
+		}
+		await OnGameOperation.InvokeAsync((new Game { Name = editName }, "create"));
+		await HideCreateModal();
+	}
+
+	private async Task OnCreateKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter") await CreateGame();
+		else if (e.Key == "Escape") await HideCreateModal();
+	}
+
+	private void ShowRenameModal()
+	{
+		if (SelectedGame == null) return;
+		editName = SelectedGame.Name;
+		renameModal.ShowAsync();
+	}
+
+	private async Task HideRenameModal()
+	{
+		await renameModal.HideAsync();
+	}
+
+	private async Task RenameGame()
+	{
+		if (SelectedGame == null || string.IsNullOrWhiteSpace(editName))
+		{
+			return;
+		}
+		SelectedGame.Name = editName;
+		await OnGameOperation.InvokeAsync((SelectedGame, "rename"));
+		await HideRenameModal();
+	}
+
+	private async Task OnRenameKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter") await RenameGame();
+		else if (e.Key == "Escape") await HideRenameModal();
+	}
+
+	private async Task DeleteGame()
+	{
+		if (SelectedGame == null) return;
+		var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+			$"Delete the game '{SelectedGame.Name}' and ALL of its factories? This cannot be undone.");
+		if (confirmed)
+		{
+			await OnGameOperation.InvokeAsync((SelectedGame, "delete"));
+		}
+	}
+}

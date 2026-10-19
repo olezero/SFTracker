@@ -87,11 +87,19 @@
 			</div>
 		</div>
 
-		<!-- Edit / delete actions (far right, vertically centered) -->
-		<div class="ms-3 flex-shrink-0 btn-group btn-group-sm" role="group" aria-label="Edit or delete recipe">
+		<!-- Edit / match demand / delete actions (far right, vertically centered) -->
+		@{
+			var demandMultiplier = GetDemandMultiplier(factoryRecipe);
+		}
+		<div class="ms-3 flex-shrink-0 btn-group btn-group-sm" role="group" aria-label="Edit, match demand or delete recipe">
 			<button class="btn btn-outline-primary" title="Edit recipe"
 				@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
 				<i class="bi bi-pencil"></i>
+			</button>
+			<button class="btn btn-outline-info" disabled="@(demandMultiplier == null)"
+				title="@GetDemandButtonTitle(factoryRecipe, demandMultiplier)"
+				@onclick="() => MatchDemand(factoryRecipe, demandMultiplier)">
+				<i class="bi bi-bullseye"></i>
 			</button>
 			<button class="btn @(pendingDeleteRecipeId == factoryRecipe.Id ? "btn-danger" : "btn-outline-danger")"
 				title="Delete recipe" @onclick="() => HandleRemoveRecipeClick(factoryRecipe.Id)">
@@ -146,7 +154,8 @@
 	{
 		if (editingRecipeMultiplier > 0)
 		{
-			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier);
+			var factoryRecipe = SelectedFactory.Recipes.First(r => r.Id == factoryRecipeId);
+			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier, factoryRecipe.IsSlooped);
 			await OnRecipeChanged.InvokeAsync();
 			CancelRecipeEdit();
 		}
@@ -305,6 +314,80 @@
 		{
 			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
 		}
+	}
+
+	/// <summary>
+	/// Multiplier that makes this recipe's main product exactly cover the rest of the
+	/// factory's demand for it (manual inputs + other recipes' enabled inputs, minus
+	/// manual outputs and other recipes' enabled outputs). Null when there is nothing
+	/// to cover or the recipe has no enabled output to cover it with.
+	/// </summary>
+	private double? GetDemandMultiplier(FactoryRecipe factoryRecipe)
+	{
+		var output = GetMainEnabledOutput(factoryRecipe);
+		if (output == null)
+			return null;
+
+		var perMachine = output.GetQuantityPerMinute(1, factoryRecipe.IsSlooped);
+		if (perMachine <= 0)
+			return null;
+
+		var required = GetUncoveredDemand(factoryRecipe, output.PartId);
+		if (required <= 0.0001)
+			return null;
+
+		// Store the exact value; the row display rounds to 4 decimals but the rates are computed from this.
+		return required / perMachine;
+	}
+
+	// First enabled output, in the same order the row uses for the main product icon.
+	private DbRecipeOutput? GetMainEnabledOutput(FactoryRecipe factoryRecipe) =>
+		factoryRecipe.Recipe.Outputs
+			.OrderBy(o => o.Id)
+			.FirstOrDefault(o => FactoryService.IsRecipeOutputEnabled(factoryRecipe, o.Id));
+
+	// Demand for partId in the selected factory that is not met by anything other than factoryRecipe.
+	private double GetUncoveredDemand(FactoryRecipe factoryRecipe, int partId)
+	{
+		var demand = SelectedFactory.Inputs.Where(i => i.PartId == partId).Sum(i => i.AmountPerMinute);
+		var supply = SelectedFactory.Outputs.Where(o => o.PartId == partId).Sum(o => o.AmountPerMinute);
+
+		foreach (var other in SelectedFactory.Recipes)
+		{
+			demand += other.Recipe.Inputs
+				.Where(ri => ri.PartId == partId && FactoryService.IsRecipeInputEnabled(other, ri.Id))
+				.Sum(ri => ri.GetQuantityPerMinute(other));
+
+			if (other.Id == factoryRecipe.Id)
+				continue;
+
+			supply += other.Recipe.Outputs
+				.Where(ro => ro.PartId == partId && FactoryService.IsRecipeOutputEnabled(other, ro.Id))
+				.Sum(ro => ro.GetQuantityPerMinute(other));
+		}
+
+		return demand - supply;
+	}
+
+	private string GetDemandButtonTitle(FactoryRecipe factoryRecipe, double? demandMultiplier)
+	{
+		var output = GetMainEnabledOutput(factoryRecipe);
+		if (output == null)
+			return "No enabled output to match demand with";
+		if (demandMultiplier == null)
+			return $"No uncovered demand for {output.Part.Name} in this factory";
+
+		var rate = output.GetQuantityPerMinute(demandMultiplier.Value, factoryRecipe.IsSlooped);
+		return $"Match demand: set to {FormatNumber(demandMultiplier.Value)} x ({FormatNumber(rate)} {output.Part.Name}/min)";
+	}
+
+	private async Task MatchDemand(FactoryRecipe factoryRecipe, double? demandMultiplier)
+	{
+		if (demandMultiplier == null)
+			return;
+
+		await FactoryService.UpdateFactoryRecipeAsync(factoryRecipe.Id, demandMultiplier.Value, factoryRecipe.IsSlooped);
+		await OnRecipeChanged.InvokeAsync();
 	}
 
 	private string FormatNumber(double value)

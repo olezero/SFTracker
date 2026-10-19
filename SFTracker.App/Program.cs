@@ -27,6 +27,7 @@ builder.Services.AddDbContext<SFTrackerDbContext>((options) => {
 builder.Services.AddSingleton<GameInfoService>();
 builder.Services.AddScoped<FactoryService>();
 builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<NetworkService>();
 builder.Services.AddScoped<DataImportService>();
 
 var app = builder.Build();

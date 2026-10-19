@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace SFTracker.Models;
 
 /// <summary>
-/// Network of factories within a game, can be used to group factories together.
-/// Not surfaced in the UI yet.
+/// Network of factories within a game (e.g. everything fed by one shared copper line).
+/// A factory belongs to at most one network; the Resource Balance can be scoped to a network.
 /// </summary>
 [Table("Networks")]
 [Index(nameof(GameId), nameof(Name), IsUnique = true)]

@@ -14,6 +14,7 @@ public class FactoryService {
 	public async Task<List<Factory>> GetAllFactoriesAsync(int gameId) {
 		return await m_context.Factories
 			.Where(f => f.GameId == gameId)
+			.Include(f => f.Network)
 			.Include(f => f.Inputs)
 				.ThenInclude(i => i.Part)
 				.OrderBy(i => i.Name)
@@ -39,6 +40,7 @@ public class FactoryService {
 
 	public async Task<Factory?> GetFactoryByIdAsync(int id) {
 		return await m_context.Factories
+			.Include(f => f.Network)
 			.Include(f => f.Inputs)
 				.ThenInclude(i => i.Part)
 				.OrderBy(i => i.Name)
@@ -66,6 +68,21 @@ public class FactoryService {
 		m_context.Factories.Add(factory);
 		await m_context.SaveChangesAsync();
 		return factory;
+	}
+
+	/// <summary>
+	/// Assigns a factory to a network (or none). Sets both the navigation and the FK so the
+	/// tracked instance stays consistent with what gets saved.
+	/// </summary>
+	public async Task SetFactoryNetworkAsync(int factoryId, int? networkId) {
+		var factory = await m_context.Factories.FindAsync(factoryId);
+		if (factory == null) {
+			return;
+		}
+		factory.Network = networkId.HasValue ? await m_context.Networks.FindAsync(networkId.Value) : null;
+		factory.NetworkId = factory.Network?.Id;
+		factory.UpdatedAt = DateTime.UtcNow;
+		await m_context.SaveChangesAsync();
 	}
 
 	public async Task<Factory> UpdateFactoryAsync(Factory factory) {

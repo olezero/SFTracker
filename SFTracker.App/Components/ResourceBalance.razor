@@ -2,6 +2,7 @@
 @using SFTracker.Models
 @using SFTracker.Constants
 @inject FactoryService FactoryService
+@inject NetworkService NetworkService
 @implements IDisposable
 
 
@@ -15,10 +16,21 @@
 		<div>
 			<select class="form-select form-select-sm" @bind="selectedFactory">
 				<option value="all">All Factories</option>
-				@foreach (var factory in factories)
+				@if (networks.Any())
 				{
-					<option value="@factory.Id">@factory.Name</option>
+					<optgroup label="Networks">
+						@foreach (var network in networks)
+						{
+							<option value="@($"{NetworkScopePrefix}{network.Id}")">@network.Name</option>
+						}
+					</optgroup>
 				}
+				<optgroup label="Factories">
+					@foreach (var factory in factories)
+					{
+						<option value="@factory.Id">@factory.Name</option>
+					}
+				</optgroup>
 			</select>
 		</div>
 	</div>
@@ -129,12 +141,15 @@
 	[Parameter] public int FluidDivisor { get; set; } = 1;
 
 	private List<Factory> factories = new();
+	private List<Network> networks = new();
 	private int lastGameId = -1;
 	private int lastFluidDivisor = -1;
 	private List<PartBalance> partBalances = new();
 	private bool isLoading = true;
 	private CancellationTokenSource? _debounceTokenSource;
 
+	// Selector value: "all", "network:<id>" or "<factoryId>".
+	private const string NetworkScopePrefix = "network:";
 	private string selectedFactoryBacking = "all";
 	private string selectedFactory
 	{
@@ -198,7 +213,15 @@
 	private async Task LoadPartBalances()
 	{
 		var factories = new List<Factory>();
-		if (selectedFactoryBacking != "all" && int.TryParse(selectedFactoryBacking, out var selectedFactoryId))
+		if (selectedFactoryBacking.StartsWith(NetworkScopePrefix)
+			&& int.TryParse(selectedFactoryBacking.Substring(NetworkScopePrefix.Length), out var networkId))
+		{
+			// All factories in the selected network, balanced as one unit
+			factories = (await FactoryService.GetAllFactoriesAsync(GameId).ConfigureAwait(false))
+				.Where(f => f.NetworkId == networkId)
+				.ToList();
+		}
+		else if (selectedFactoryBacking != "all" && int.TryParse(selectedFactoryBacking, out var selectedFactoryId))
 		{
 			// Filter to the selected factory
 			var factory = await FactoryService.GetFactoryByIdAsync(selectedFactoryId).ConfigureAwait(false);
@@ -336,5 +359,13 @@
 	private async Task LoadData()
 	{
 		factories = await FactoryService.GetAllFactoriesAsync(GameId).ConfigureAwait(false);
+		networks = await NetworkService.GetAllNetworksAsync(GameId).ConfigureAwait(false);
+
+		// The selected network may have been deleted; fall back to everything.
+		if (selectedFactoryBacking.StartsWith(NetworkScopePrefix)
+			&& !networks.Any(n => $"{NetworkScopePrefix}{n.Id}" == selectedFactoryBacking))
+		{
+			selectedFactoryBacking = "all";
+		}
 	}
 }

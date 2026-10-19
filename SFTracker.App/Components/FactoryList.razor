@@ -1,4 +1,6 @@
 @inject IJSRuntime JSRuntime
+@inject FactoryService FactoryService
+@inject NetworkService NetworkService
 
 <div class="card">
 	<div class="card-header d-flex justify-content-between align-items-center">
@@ -15,7 +17,13 @@
 					<div class="d-flex w-100 justify-content-between sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
 						@onclick="() => SelectFactory(factory)" data-factory-id="@factory.Id"
 						data-selected="@(SelectedFactory?.Id == factory.Id)">
-						<h6 class="mb-1">@factory.Name</h6>
+						<div>
+							<h6 class="mb-1">@factory.Name</h6>
+							@if (factory.Network != null)
+							{
+								<small class="text-muted" title="Network"><i class="bi bi-diagram-3"></i> @factory.Network.Name</small>
+							}
+						</div>
 						<small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
 					</div>
 				</ItemTemplate>
@@ -56,6 +64,26 @@
 			<input type="text" class="form-control" id="factoryNameEdit" @bind="newFactoryName"
 				placeholder="Enter factory name">
 		</div>
+		<div class="mb-3">
+			<label for="factoryNetworkEdit" class="form-label">Network</label>
+			<select id="factoryNetworkEdit" class="form-select" @bind="editNetworkChoice">
+				<option value="">No network</option>
+				@foreach (var network in Networks)
+				{
+					<option value="@network.Id">@network.Name</option>
+				}
+				<option value="@NewNetworkChoice">New network…</option>
+			</select>
+			<div class="form-text">Factories in the same network are balanced together in the Resource Balance panel.</div>
+		</div>
+		@if (editNetworkChoice == NewNetworkChoice)
+		{
+			<div class="mb-3">
+				<label for="newNetworkName" class="form-label">New Network Name</label>
+				<input type="text" class="form-control" id="newNetworkName" @bind="newNetworkName"
+					placeholder="e.g. Copper line">
+			</div>
+		}
 	</BodyTemplate>
 	<FooterTemplate>
 		<Button Color="ButtonColor.Secondary" @onclick="HideUpdateFactoryModal">Cancel</Button>
@@ -66,6 +94,7 @@
 @code {
 	[Parameter] public List<Factory> Factories { get; set; } = new();
 	[Parameter] public Factory? SelectedFactory { get; set; }
+	[Parameter] public List<Network> Networks { get; set; } = new();
 	[Parameter] public EventCallback<Factory?> SelectedFactoryChanged { get; set; }
 	[Parameter] public EventCallback OnFactoryListChanged { get; set; }
 	[Parameter] public EventCallback<(Factory factory, string operation)> OnFactoryOperation { get; set; }
@@ -73,6 +102,10 @@
 	private Modal createFactoryModal = default!;
 	private Modal updateFactoryModal = default!;
 	private string newFactoryName = "";
+
+	private const string NewNetworkChoice = "new";
+	private string editNetworkChoice = ""; // "" = none, "<id>" = existing network, NewNetworkChoice = create one
+	private string newNetworkName = "";
 
 	public List<Factory> SortedFactories => Factories.OrderBy(f => f.Sorting).ToList();
 
@@ -93,6 +126,8 @@
 		if (SelectedFactory != null)
 		{
 			newFactoryName = SelectedFactory.Name;
+			editNetworkChoice = SelectedFactory.NetworkId?.ToString() ?? "";
+			newNetworkName = "";
 			updateFactoryModal.ShowAsync();
 		}
 	}
@@ -136,6 +171,26 @@
 		if (SelectedFactory == null || string.IsNullOrWhiteSpace(newFactoryName))
 		{
 			return;
+		}
+
+		int? networkId = null;
+		if (editNetworkChoice == NewNetworkChoice)
+		{
+			if (string.IsNullOrWhiteSpace(newNetworkName))
+			{
+				return;
+			}
+			var created = await NetworkService.CreateNetworkAsync(newNetworkName, SelectedFactory.GameId);
+			networkId = created.Id;
+		}
+		else if (int.TryParse(editNetworkChoice, out var existingId))
+		{
+			networkId = existingId;
+		}
+
+		if (networkId != SelectedFactory.NetworkId)
+		{
+			await FactoryService.SetFactoryNetworkAsync(SelectedFactory.Id, networkId);
 		}
 
 		SelectedFactory.Name = newFactoryName;

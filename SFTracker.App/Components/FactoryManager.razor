@@ -3,6 +3,7 @@
 @using SFTracker.Constants
 @inject FactoryService FactoryService
 @inject GameService GameService
+@inject NetworkService NetworkService
 @inject IJSRuntime JSRuntime
 
 <style>
@@ -30,7 +31,7 @@
 
 <div class="row g-3">
 	<div class="col-lg-3">
-		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory"
+		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory" Networks="@networks"
 			SelectedFactoryChanged="@OnFactorySelected" OnFactoryListChanged="@OnFactoryListChanged"
 			OnFactoryOperation="@OnFactoryOperation" />
 
@@ -56,6 +57,7 @@
 	private Game? selectedGame;
 
 	private List<Factory> factories = new();
+	private List<Network> networks = new();
 	private List<DbPart> allParts = new();
 	private List<DbRecipe> allRecipes = new();
 	private Factory? selectedFactory;
@@ -77,6 +79,9 @@
 		factories = selectedGame == null
 			? new List<Factory>()
 			: await FactoryService.GetAllFactoriesAsync(selectedGame.Id).ConfigureAwait(false);
+		networks = selectedGame == null
+			? new List<Network>()
+			: await NetworkService.GetAllNetworksAsync(selectedGame.Id).ConfigureAwait(false);
 		allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
 		allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
 

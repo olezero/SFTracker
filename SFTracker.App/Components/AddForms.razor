@@ -55,7 +55,7 @@
 </div>
 
 @* Advanced Recipe Modal *@
-<RecipeEditorModal @ref="advancedRecipeModal" Recipes="AllRecipes" IsEditMode="false"
+<RecipeEditorModal @ref="advancedRecipeModal" Recipes="AllRecipes" IsEditMode="false" FluidDivisor="@FluidDivisor"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="1" FactoryRecipeId="null"
 	OnSave="OnAdvancedRecipeAdd" />
 
@@ -63,6 +63,7 @@
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
 	[Parameter] public List<DbPart> AllParts { get; set; } = new();
+	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnRecipeAdded { get; set; }
 	[Parameter] public EventCallback OnInputAdded { get; set; }
 	[Parameter] public EventCallback OnOutputAdded { get; set; }

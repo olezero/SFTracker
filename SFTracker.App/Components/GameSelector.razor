@@ -1,3 +1,4 @@
+@using SFTracker.Constants
 @inject IJSRuntime JSRuntime
 
 <!-- Top bar: brand + active game picker. Everything below it is scoped to the selected game. -->
@@ -19,6 +20,17 @@
 	<button class="btn btn-secondary btn-sm" title="Delete game and all its factories" @onclick="DeleteGame" disabled="@(SelectedGame == null)">
 		<i class="bi bi-trash"></i>
 	</button>
+
+	<label class="text-muted mb-0 ms-4" for="fluidDivisor" title="Fluid-scaling mod: every fluid amount in every recipe is divided by this">
+		<i class="bi bi-droplet"></i> Fluids ÷
+	</label>
+	<select id="fluidDivisor" class="form-select form-select-sm w-auto" disabled="@(SelectedGame == null)"
+		value="@(SelectedGame?.FluidDivisor ?? 1)" @onchange="OnFluidDivisorChanged">
+		@foreach (var divisor in FluidParts.AllowedDivisors)
+		{
+			<option value="@divisor" selected="@(divisor == (SelectedGame?.FluidDivisor ?? 1))">@divisor</option>
+		}
+	</select>
 </div>
 
 <Modal @ref="createModal" Title="New Game">
@@ -54,6 +66,7 @@
 	[Parameter] public Game? SelectedGame { get; set; }
 	[Parameter] public EventCallback<Game?> SelectedGameChanged { get; set; }
 	[Parameter] public EventCallback<(Game game, string operation)> OnGameOperation { get; set; }
+	[Parameter] public EventCallback<int> FluidDivisorChanged { get; set; }
 
 	private Modal createModal = default!;
 	private Modal renameModal = default!;
@@ -68,6 +81,14 @@
 			{
 				await SelectedGameChanged.InvokeAsync(game);
 			}
+		}
+	}
+
+	private async Task OnFluidDivisorChanged(ChangeEventArgs e)
+	{
+		if (SelectedGame != null && int.TryParse(e.Value?.ToString(), out var divisor) && divisor != SelectedGame.FluidDivisor)
+		{
+			await FluidDivisorChanged.InvokeAsync(divisor);
 		}
 	}
 

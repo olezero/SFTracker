@@ -25,6 +25,12 @@ public class Game {
 	/// </summary>
 	public DateTime LastOpenedAt { get; set; } = DateTime.UtcNow;
 
+	/// <summary>
+	/// Divisor applied to every fluid quantity in every recipe (for the fluid-scaling mod; 1 = vanilla).
+	/// Applied at calculation time in DbRecipeInput/Output.GetQuantityPerMinute, never to stored data.
+	/// </summary>
+	public int FluidDivisor { get; set; } = 1;
+
 	// Navigation properties
 	[InverseProperty(nameof(Factory.Game))]
 	public ICollection<Factory> Factories { get; set; } = [];

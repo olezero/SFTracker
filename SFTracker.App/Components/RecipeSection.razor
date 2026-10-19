@@ -145,7 +145,7 @@
 @* Advanced Recipe Modals *@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
-	InitialIsSlooped="editModalInitialIsSlooped"
+	InitialIsSlooped="editModalInitialIsSlooped" FluidDivisor="@FluidDivisor"
 	HighlightInputId="editModalHighlightInputId" HighlightOutputId="editModalHighlightOutputId"
 	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
@@ -153,6 +153,7 @@
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
 	[Parameter] public List<DbPart> AllParts { get; set; } = new();
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
+	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
 
 	// Recipes in manual display order; also the data source for the sortable list.
@@ -311,8 +312,8 @@
 
 	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input)
 	{
-		var baseNumber = input.GetQuantityPerMinute(1);
-		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier);
+		var baseNumber = input.GetQuantityPerMinute(1, FluidDivisor);
+		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier, FluidDivisor);
 
 		var formattedBaseNumber = FormatNumber(baseNumber);
 		var formattedTotalNumber = FormatNumber(totalNumber);
@@ -329,8 +330,8 @@
 
 	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output)
 	{
-		var baseNumber = output.GetQuantityPerMinute(1);
-		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier, factoryRecipe.IsSlooped);
+		var baseNumber = output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor);
+		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier, factoryRecipe.IsSlooped, FluidDivisor);
 
 		var formattedBaseNumber = FormatNumber(baseNumber);
 		var formattedTotalNumber = FormatNumber(totalNumber);
@@ -365,7 +366,7 @@
 		if (output == null)
 			return null;
 
-		var perMachine = output.GetQuantityPerMinute(1, factoryRecipe.IsSlooped);
+		var perMachine = output.GetQuantityPerMinute(1, factoryRecipe.IsSlooped, FluidDivisor);
 		if (perMachine <= 0)
 			return null;
 
@@ -393,14 +394,14 @@
 		{
 			demand += other.Recipe.Inputs
 				.Where(ri => ri.PartId == partId && FactoryService.IsRecipeInputEnabled(other, ri.Id))
-				.Sum(ri => ri.GetQuantityPerMinute(other));
+				.Sum(ri => ri.GetQuantityPerMinute(other, FluidDivisor));
 
 			if (excludedRecipe != null && other.Id == excludedRecipe.Id)
 				continue;
 
 			supply += other.Recipe.Outputs
 				.Where(ro => ro.PartId == partId && FactoryService.IsRecipeOutputEnabled(other, ro.Id))
-				.Sum(ro => ro.GetQuantityPerMinute(other));
+				.Sum(ro => ro.GetQuantityPerMinute(other, FluidDivisor));
 		}
 
 		return demand - supply;
@@ -424,13 +425,13 @@
 
 		if (asProducer)
 		{
-			var perMachine = recipe.Outputs.Where(o => o.PartId == partId).Sum(o => o.GetQuantityPerMinute(1));
+			var perMachine = recipe.Outputs.Where(o => o.PartId == partId).Sum(o => o.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor));
 			if (gap > 0.0001 && perMachine > 0)
 				multiplier = gap / perMachine;
 		}
 		else
 		{
-			var perMachine = recipe.Inputs.Where(i => i.PartId == partId).Sum(i => i.GetQuantityPerMinute(1));
+			var perMachine = recipe.Inputs.Where(i => i.PartId == partId).Sum(i => i.GetQuantityPerMinute(1, FluidDivisor));
 			if (-gap > 0.0001 && perMachine > 0)
 				multiplier = -gap / perMachine;
 		}
@@ -447,7 +448,7 @@
 		if (demandMultiplier == null)
 			return $"No uncovered demand for {output.Part.Name} in this factory";
 
-		var rate = output.GetQuantityPerMinute(demandMultiplier.Value, factoryRecipe.IsSlooped);
+		var rate = output.GetQuantityPerMinute(demandMultiplier.Value, factoryRecipe.IsSlooped, FluidDivisor);
 		return $"Match demand: set to {FormatNumber(demandMultiplier.Value)} x ({FormatNumber(rate)} {output.Part.Name}/min)";
 	}
 

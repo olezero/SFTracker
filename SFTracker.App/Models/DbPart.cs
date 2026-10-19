@@ -22,6 +22,10 @@ public class DbPart {
 	[MaxLength(500)]
 	public string? ImageUrl { get; set; }
 
+	/// <summary>True for piped parts (liquids/gases); these are scaled by <see cref="Game.FluidDivisor"/>.</summary>
+	[NotMapped]
+	public bool IsFluid => SFTracker.Constants.FluidParts.IsFluid(Name);
+
 	// Navigation properties
 	[InverseProperty(nameof(FactoryInput.Part))]
 	public ICollection<FactoryInput> FactoryInputs { get; set; } = [];

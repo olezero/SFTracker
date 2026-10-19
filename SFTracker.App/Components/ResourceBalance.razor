@@ -126,9 +126,11 @@
 
 @code {
 	[Parameter] public int GameId { get; set; }
+	[Parameter] public int FluidDivisor { get; set; } = 1;
 
 	private List<Factory> factories = new();
 	private int lastGameId = -1;
+	private int lastFluidDivisor = -1;
 	private List<PartBalance> partBalances = new();
 	private bool isLoading = true;
 	private CancellationTokenSource? _debounceTokenSource;
@@ -165,7 +167,13 @@
 		if (GameId != lastGameId)
 		{
 			lastGameId = GameId;
+			lastFluidDivisor = FluidDivisor;
 			selectedFactoryBacking = "all";
+			await RefreshBalance();
+		}
+		else if (FluidDivisor != lastFluidDivisor)
+		{
+			lastFluidDivisor = FluidDivisor;
 			await RefreshBalance();
 		}
 	}
@@ -253,7 +261,7 @@
 				var override_ = fr.InputOverrides.FirstOrDefault(o => o.RecipeInputId == ri.Id);
 				return override_?.IsEnabled ?? true; // Default to enabled if no override
 			})
-			.Select(ri => ri.GetQuantityPerMinute(fr.Multiplier)))
+			.Select(ri => ri.GetQuantityPerMinute(fr.Multiplier, FluidDivisor)))
 			.Sum();
 
 			// Calculate recipe production (recipe outputs) - only include enabled outputs
@@ -264,7 +272,7 @@
 				var override_ = fr.OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == ro.Id);
 				return override_?.IsEnabled ?? true; // Default to enabled if no override
 			})
-			.Select(ro => ro.GetQuantityPerMinute(fr)))
+			.Select(ro => ro.GetQuantityPerMinute(fr, FluidDivisor)))
 			.Sum();
 
 			// Total consumption and production

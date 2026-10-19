@@ -55,6 +55,18 @@ public class GameService {
 		}
 	}
 
+	public async Task SetFluidDivisorAsync(int id, int divisor) {
+		if (!Constants.FluidParts.AllowedDivisors.Contains(divisor)) {
+			throw new ArgumentOutOfRangeException(nameof(divisor), divisor, "Not a supported fluid divisor.");
+		}
+		var game = await m_context.Games.FindAsync(id);
+		if (game != null) {
+			game.FluidDivisor = divisor;
+			game.UpdatedAt = DateTime.UtcNow;
+			await m_context.SaveChangesAsync();
+		}
+	}
+
 	public async Task TouchGameAsync(int id) {
 		var game = await m_context.Games.FindAsync(id);
 		if (game != null) {

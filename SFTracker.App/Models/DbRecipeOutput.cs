@@ -20,6 +20,11 @@ public class DbRecipeOutput {
 	[ForeignKey(nameof(RecipeId))]
 	public DbRecipe Recipe { get; set; } = null!;
 
-	public double GetQuantityPerMinute(double multiplier, bool isSlooped = false) => Quantity * multiplier / Recipe.TimeSeconds * 60 * (isSlooped ? 2 : 1);
-	public double GetQuantityPerMinute(FactoryRecipe factoryRecipe) => Quantity * factoryRecipe.Multiplier / Recipe.TimeSeconds * 60 * (factoryRecipe.IsSlooped ? 2 : 1);
+	/// <param name="fluidDivisor">The game's fluid divisor; only applied when the part is a fluid.</param>
+	public double GetQuantityPerMinute(double multiplier, bool isSlooped = false, int fluidDivisor = 1) =>
+		Quantity * multiplier / Recipe.TimeSeconds * 60 * (isSlooped ? 2 : 1) / FluidScale(fluidDivisor);
+	public double GetQuantityPerMinute(FactoryRecipe factoryRecipe, int fluidDivisor = 1) =>
+		GetQuantityPerMinute(factoryRecipe.Multiplier, factoryRecipe.IsSlooped, fluidDivisor);
+
+	private double FluidScale(int fluidDivisor) => Part?.IsFluid == true && fluidDivisor > 0 ? fluidDivisor : 1;
 }

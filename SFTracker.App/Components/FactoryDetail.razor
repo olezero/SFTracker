@@ -15,10 +15,11 @@
 			</div>
 		</div>
 		<div class="card-body">
-			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts" OnRecipeChanged="@OnRecipeChanged" />
+			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts"
+				FluidDivisor="@FluidDivisor" OnRecipeChanged="@OnRecipeChanged" />
 			<CustomInputOutput SelectedFactory="@SelectedFactory" AllParts="@AllParts"
 				OnInputOutputChanged="@OnInputOutputChanged" />
-			<AddForms SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts"
+			<AddForms SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts" FluidDivisor="@FluidDivisor"
 				OnRecipeAdded="@OnRecipeAdded" OnInputAdded="@OnInputAdded" OnOutputAdded="@OnOutputAdded" />
 		</div>
 	</div>
@@ -37,6 +38,7 @@ else
 	[Parameter] public Factory? SelectedFactory { get; set; }
 	[Parameter] public List<DbPart> AllParts { get; set; } = new();
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
+	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnShowUpdateFactoryModal { get; set; }
 	[Parameter] public EventCallback OnDeleteSelectedFactory { get; set; }
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }

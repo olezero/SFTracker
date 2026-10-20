@@ -108,7 +108,7 @@
 									{
 										<li><button type="button" class="dropdown-item"
 											@onmouseenter="e => ShowRecipeTip(recipe, output.PartId, e)" @onmouseleave="HideRecipeTip"
-											@onclick="() => AddRecipeForPart(recipe, output.PartId, asProducer: false)">@recipe.Name</button></li>
+											@onclick="() => AddRecipeForPart(recipe, output.PartId, asProducer: false, insertAbove: factoryRecipe)">@recipe.Name</button></li>
 									}
 								</ul>
 								<button type="button" class="btn btn-outline-secondary"
@@ -433,6 +433,9 @@
 	/// Add a recipe picked from an ingredient's dropdown. As a producer it is sized to cover the
 	/// factory's current shortfall of the part; as a consumer it is sized to eat the current surplus.
 	/// Falls back to 1x when there is no gap to fill.
+	/// New recipes go to the bottom of the list unless <paramref name="insertAbove"/> is given, in
+	/// which case the new recipe is placed directly above it (used for consumers, so they sit next
+	/// to the recipe whose output they eat).
 	/// </summary>
 	private void ShowRecipeTip(DbRecipe recipe, int partId, MouseEventArgs e)
 	{
@@ -449,7 +452,7 @@
 		tipRecipe = null;
 	}
 
-	private async Task AddRecipeForPart(DbRecipe recipe, int partId, bool asProducer)
+	private async Task AddRecipeForPart(DbRecipe recipe, int partId, bool asProducer, FactoryRecipe? insertAbove = null)
 	{
 		HideRecipeTip();
 		var multiplier = 1.0;
@@ -468,7 +471,19 @@
 				multiplier = -gap / perMachine;
 		}
 
-		await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, recipe.Id, multiplier);
+		var added = await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, recipe.Id, multiplier);
+
+		if (insertAbove != null)
+		{
+			// The shared DbContext's relationship fix-up has already appended the new row to
+			// SelectedFactory.Recipes, so drop it before inserting it at the wanted position
+			// (otherwise the trailing duplicate would win in ReorderFactoryRecipesAsync).
+			var orderedIds = OrderedRecipes.Select(r => r.Id).Where(id => id != added.Id).ToList();
+			var index = orderedIds.IndexOf(insertAbove.Id);
+			orderedIds.Insert(index < 0 ? orderedIds.Count : index, added.Id);
+			await FactoryService.ReorderFactoryRecipesAsync(orderedIds);
+		}
+
 		await OnRecipeChanged.InvokeAsync();
 	}
 

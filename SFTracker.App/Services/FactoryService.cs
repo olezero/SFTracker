@@ -136,7 +136,8 @@ public class FactoryService {
 		}
 	}
 
-	public async Task AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier, bool isSlooped = false) {
+	/// <returns>The newly created factory recipe.</returns>
+	public async Task<FactoryRecipe> AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier, bool isSlooped = false) {
 		// Place new recipes last in the manual ordering.
 		var maxSorting = await m_context.FactoryRecipes
 			.Where(r => r.FactoryId == factoryId && r.IsActive)
@@ -152,6 +153,7 @@ public class FactoryService {
 		};
 		m_context.FactoryRecipes.Add(factoryRecipe);
 		await m_context.SaveChangesAsync();
+		return factoryRecipe;
 	}
 
 	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier, bool isSlooped = false) {

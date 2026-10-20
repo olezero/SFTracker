@@ -130,11 +130,27 @@ h1:focus {
     box-shadow: none;
 }
 
-/* Per-ingredient action buttons in recipe rows: keep them as short as the 24px part icon. */
+/* Per-ingredient action buttons in recipe rows: keep them as short as the 24px part icon.
+   Darkly's outline-secondary (#444) all but vanishes against the dark rows, so lift the
+   border/icon a few steps and brighten further on hover. */
 .ingredient-actions .btn {
 	padding: 0 0.35rem;
 	font-size: 0.75rem;
 	line-height: 22px;
+	color: #b0b0b0;
+	border-color: #6c6c6c;
+}
+
+.ingredient-actions .btn:hover:not(:disabled) {
+	color: #fff;
+	background-color: #5a5a5a;
+	border-color: #8a8a8a;
+}
+
+.ingredient-actions .btn:disabled {
+	color: #6c6c6c;
+	border-color: #505050;
+	opacity: 1;
 }
 
 /* Hover card for recipes in the per-ingredient "+" dropdowns (RecipeSection).

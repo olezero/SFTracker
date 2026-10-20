@@ -2,6 +2,7 @@
 @using BlazorBootstrap
 
 <AutoComplete TItem="DbPart"
+			  Size="AutoCompleteSize.Small"
 			  @bind-Value="selectedText"
 			  DataProvider="PartsDataProvider"
 			  PropertyName="Name"

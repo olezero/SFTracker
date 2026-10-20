@@ -65,11 +65,16 @@
 						resizable: { handles: 'se' },
 						minRow: 1
 					}, el);
+					// 'change' also fires for re-renders inside the cards, so only report real changes.
+					let lastSent = null;
 					grid.on('change', () => {
 						const layout = {};
 						for (const node of grid.save(false)) {
 							layout[node.id] = { x: node.x, y: node.y, w: node.w, h: node.h };
 						}
+						const json = JSON.stringify(layout);
+						if (json === lastSent) return;
+						lastSent = json;
 						dotNetRef.invokeMethodAsync('OnLayoutChanged', layout).catch(() => { });
 					});
 					el._grid = grid;

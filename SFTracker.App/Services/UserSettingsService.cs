@@ -79,9 +79,23 @@ public class UserSettingsService {
 		}
 	}
 
-	/// <summary>Saves only the dashboard layout (null = back to defaults), keeping the other settings.</summary>
-	public Task SaveLayoutAsync(Dictionary<string, CardLayout>? layout) =>
-		SaveAsync(new UserSettings { DatabasePath = Settings.DatabasePath, Layout = layout });
+	/// <summary>
+	/// Saves only the dashboard layout (null = back to defaults), keeping the other settings. Skips the
+	/// write when nothing changed, so spurious grid events don't touch the file.
+	/// </summary>
+	public Task SaveLayoutAsync(Dictionary<string, CardLayout>? layout) {
+		if (SameLayout(Settings.Layout, layout)) {
+			return Task.CompletedTask;
+		}
+		return SaveAsync(new UserSettings { DatabasePath = Settings.DatabasePath, Layout = layout });
+	}
+
+	private static bool SameLayout(Dictionary<string, CardLayout>? a, Dictionary<string, CardLayout>? b) {
+		if (a == null || b == null) {
+			return a == b;
+		}
+		return a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var other) && other == kv.Value);
+	}
 
 	private UserSettings Load() {
 		if (!File.Exists(FilePath))

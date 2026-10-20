@@ -46,11 +46,12 @@
 				const el = document.getElementById(id);
 				if (el) { el.focus(); el.select(); }
 			},
-			// Hover tracking for Blazor.Bootstrap AutoComplete lists (RecipeSelector): the component
-			// renders its own <li> items with no per-item events, so we watch the wrapper and report
-			// the hovered item's text and viewport position to .NET.
+			// Hover tracking for Blazor.Bootstrap AutoComplete lists (RecipeListHover): the component
+			// renders its own <li> items with no per-item events, so we watch the marker's parent
+			// element and report the hovered item's text and viewport position to .NET.
 			recipeHover: {
-				attach: function (root, dotNetRef) {
+				attach: function (marker, dotNetRef) {
+					const root = marker && marker.parentElement;
 					if (!root) return;
 					let current = null;
 					const call = (name, ...args) => dotNetRef.invokeMethodAsync(name, ...args).catch(() => { });
@@ -72,7 +73,8 @@
 					root.addEventListener('hide.bs.dropdown', leave);
 					root._recipeHover = { over, leave };
 				},
-				detach: function (root) {
+				detach: function (marker) {
+					const root = marker && marker.parentElement;
 					const h = root && root._recipeHover;
 					if (!h) return;
 					root.removeEventListener('mouseover', h.over);

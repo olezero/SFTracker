@@ -1,0 +1,67 @@
+@using SFTracker.Models
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+@* Hover card for a Blazor.Bootstrap AutoComplete recipe list. Place this inside the same element
+   as the AutoComplete: the JS helper watches the marker's parent. The hover state lives here, in
+   its own component, so showing/hiding the card never re-renders the AutoComplete (which would
+   reset the text the user is typing). *@
+<span @ref="marker" class="d-none"></span>
+
+@if (tipRecipe != null)
+{
+	<RecipeHoverCard Recipe="tipRecipe" Top="tipTop" Left="tipLeft" FluidDivisor="FluidDivisor" />
+}
+
+@code {
+	[Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = new List<DbRecipe>();
+	[Parameter] public int FluidDivisor { get; set; } = 1;
+
+	private ElementReference marker;
+	private DotNetObjectReference<RecipeListHover>? dotNetRef;
+	private DbRecipe? tipRecipe;
+	private double tipTop;
+	private double tipLeft;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			dotNetRef = DotNetObjectReference.Create(this);
+			await JSRuntime.InvokeVoidAsync("sftracker.recipeHover.attach", marker, dotNetRef);
+		}
+	}
+
+	// Recipe names are unique, so the hovered item's text identifies the recipe.
+	[JSInvokable]
+	public void OnItemHover(string name, double top, double left)
+	{
+		tipRecipe = Recipes.FirstOrDefault(r => r.Name == name);
+		tipTop = top;
+		tipLeft = left;
+		StateHasChanged();
+	}
+
+	[JSInvokable]
+	public void OnItemLeave()
+	{
+		if (tipRecipe == null)
+			return;
+		tipRecipe = null;
+		StateHasChanged();
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (dotNetRef != null)
+		{
+			try {
+				await JSRuntime.InvokeVoidAsync("sftracker.recipeHover.detach", marker);
+			} catch (JSDisconnectedException) {
+				// Circuit already gone; nothing to clean up on the client.
+			}
+			dotNetRef.Dispose();
+			dotNetRef = null;
+		}
+	}
+}

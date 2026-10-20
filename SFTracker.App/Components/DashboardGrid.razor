@@ -1,0 +1,40 @@
+@inject IJSRuntime JSRuntime
+@inject UserSettingsService UserSettings
+@implements IAsyncDisposable
+
+@* Gridstack.js host for the dashboard cards. Children are .grid-stack-item wrappers (see
+   FactoryManager); Gridstack owns their position/size, Blazor owns everything inside them, so the
+   wrappers must be rendered unconditionally. Layout changes are saved to usersettings.json. *@
+<div @ref="element" class="grid-stack">
+	@ChildContent
+</div>
+
+@code {
+	[Parameter] public RenderFragment? ChildContent { get; set; }
+
+	private ElementReference element;
+	private DotNetObjectReference<DashboardGrid>? dotNetRef;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender) {
+		if (firstRender) {
+			dotNetRef = DotNetObjectReference.Create(this);
+			await JSRuntime.InvokeVoidAsync("sftracker.dashboard.init", element, dotNetRef,
+				DashboardLayout.Columns, DashboardLayout.CellHeight);
+		}
+	}
+
+	[JSInvokable]
+	public Task OnLayoutChanged(Dictionary<string, CardLayout> layout) => UserSettings.SaveLayoutAsync(layout);
+
+	public async ValueTask DisposeAsync() {
+		if (dotNetRef != null) {
+			try {
+				await JSRuntime.InvokeVoidAsync("sftracker.dashboard.destroy", element);
+			} catch (JSDisconnectedException) {
+				// Circuit already gone; nothing to clean up on the client.
+			}
+			dotNetRef.Dispose();
+			dotNetRef = null;
+		}
+	}
+}

@@ -30,90 +30,64 @@
 		</div>
 	</div>
 	<div class="card-body p-0">
-		@if (!hasLoaded)
+		@if (hasLoaded && partBalances.Count > 0)
 		{
-			@* Nothing until the first load; later refreshes swap the content in place without a loading state. *@
-		}
-		else if (partBalances.Count > 0)
-		{
-			<div class="row m-1">
-				<div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-					<table class="table table-dark table-sm table-hover mb-0">
-						<thead class="sticky-top">
-							<tr>
-								<th style="width: 40%;">Part</th>
-								<th style="width: 15%;">Prod</th>
-								<th style="width: 5%;"></th>
-								<th style="width: 15%;" class="text-end">Con</th>
-								<th style="width: 25%;" class="text-end">Balance</th>
-							</tr>
-						</thead>
-						<tbody>
-							@foreach (var part in partBalances.Where(IsCategoryShown).OrderByDescending(p => p.Balance).ThenBy(p => p.Part.Name))
-							{
-								var category = GetCategory(part);
-								<tr>
-									<td style="max-width: 0;">
-										<div class="d-flex align-items-center">
-											<img src="@part.Part.ImageUrl" alt="@part.Part.Name" class="me-2 flex-shrink-0"
-												style="width: 20px; height: 20px; object-fit: contain;"
-												onerror="this.style.display='none'">
-											<span class="text-truncate flex-grow-1" title="@part.Part.Name">@part.Part.Name</span>
-										</div>
-									</td>
-									<td>
-										<span class="text-info">@part.Production.ToString(DisplayConstants.DecimalFormat)</span>
-									</td>
-									<td>
-										<i class="bi bi-arrow-right-short"></i>
-									</td>
-									<td class="text-end">
-										<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
-									</td>
-									<td class="text-end">
-										@if (category == BalanceCategory.Balanced)
-										{
-											<span class="text-secondary fw-bold">0.0</span>
-										}
-										else if (category == BalanceCategory.Surplus)
-										{
-											<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
-										}
-										else
-										{
-											<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
-										}
-									</td>
-								</tr>
-							}
-							@if (!partBalances.Any(IsCategoryShown))
-							{
-								<tr><td colspan="5" class="text-center text-muted py-3"><small>All rows hidden — click a category below to show it</small></td></tr>
-							}
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<!-- Summary footer: counts per category; click a tile to hide/show those rows -->
-			<div class="card-footer bg-dark p-2">
-				<div class="row text-center g-0">
-					@foreach (var category in new[] { BalanceCategory.Surplus, BalanceCategory.Deficit, BalanceCategory.Balanced })
+			<table class="table table-dark table-sm table-hover mb-0">
+				<thead class="sticky-top">
+					<tr>
+						<th style="width: 40%;">Part</th>
+						<th style="width: 15%;">Prod</th>
+						<th style="width: 5%;"></th>
+						<th style="width: 15%;" class="text-end">Con</th>
+						<th style="width: 25%;" class="text-end">Balance</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var part in partBalances.Where(IsCategoryShown).OrderByDescending(p => p.Balance).ThenBy(p => p.Part.Name))
 					{
-						var shown = IsCategoryShown(category);
-						<div class="col-4">
-							<button type="button" class="btn btn-link text-decoration-none p-0 w-100 lh-sm @(shown ? "" : "opacity-50")"
-								title="@(shown ? $"Hide {category.ToString().ToLower()} rows" : $"Show {category.ToString().ToLower()} rows")"
-								@onclick="() => ToggleCategory(category)">
-								<small class="@CategoryTextClass(category) fw-bold">@partBalances.Count(p => GetCategory(p) == category)</small>
-								<div><small class="text-muted">@category @(shown ? "" : "(hidden)")</small></div>
-							</button>
-						</div>
+						var category = GetCategory(part);
+						<tr>
+							<td style="max-width: 0;">
+								<div class="d-flex align-items-center">
+									<img src="@part.Part.ImageUrl" alt="@part.Part.Name" class="me-2 flex-shrink-0"
+										style="width: 20px; height: 20px; object-fit: contain;"
+										onerror="this.style.display='none'">
+									<span class="text-truncate flex-grow-1" title="@part.Part.Name">@part.Part.Name</span>
+								</div>
+							</td>
+							<td>
+								<span class="text-info">@part.Production.ToString(DisplayConstants.DecimalFormat)</span>
+							</td>
+							<td>
+								<i class="bi bi-arrow-right-short"></i>
+							</td>
+							<td class="text-end">
+								<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
+							</td>
+							<td class="text-end">
+								@if (category == BalanceCategory.Balanced)
+								{
+									<span class="text-secondary fw-bold">0.0</span>
+								}
+								else if (category == BalanceCategory.Surplus)
+								{
+									<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+								}
+								else
+								{
+									<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+								}
+							</td>
+						</tr>
 					}
-				</div>
-			</div>
+					@if (!partBalances.Any(IsCategoryShown))
+					{
+						<tr><td colspan="5" class="text-center text-muted py-3"><small>All rows hidden — click a category below to show it</small></td></tr>
+					}
+				</tbody>
+			</table>
 		}
-		else
+		else if (hasLoaded)
 		{
 			<div class="text-center text-muted p-3">
 				<i class="bi bi-info-circle-fill mb-2 d-block" style="font-size: 2rem;"></i>
@@ -122,6 +96,26 @@
 			</div>
 		}
 	</div>
+	@if (hasLoaded && partBalances.Count > 0)
+	{
+		<!-- Summary footer: counts per category; click a tile to hide/show those rows -->
+		<div class="card-footer bg-dark p-2">
+			<div class="row text-center g-0">
+				@foreach (var category in new[] { BalanceCategory.Surplus, BalanceCategory.Deficit, BalanceCategory.Balanced })
+				{
+					var shown = IsCategoryShown(category);
+					<div class="col-4">
+						<button type="button" class="btn btn-link text-decoration-none p-0 w-100 lh-sm @(shown ? "" : "opacity-50")"
+							title="@(shown ? $"Hide {category.ToString().ToLower()} rows" : $"Show {category.ToString().ToLower()} rows")"
+							@onclick="() => ToggleCategory(category)">
+							<small class="@CategoryTextClass(category) fw-bold">@partBalances.Count(p => GetCategory(p) == category)</small>
+							<div><small class="text-muted">@category @(shown ? "" : "(hidden)")</small></div>
+						</button>
+					</div>
+				}
+			</div>
+		</div>
+	}
 </div>
 
 @code {

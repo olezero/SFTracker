@@ -24,6 +24,11 @@
 else
 {
 	<div class="card">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0 text-muted">Factory</h5>
+			@* Invisible spacer so this header is as tall as the one with the Edit/Delete buttons. *@
+			<button class="btn btn-secondary btn-sm invisible" tabindex="-1" aria-hidden="true">Edit</button>
+		</div>
 		<div class="card-body text-center text-muted">
 			<h5>Select a factory to view details</h5>
 			<p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>

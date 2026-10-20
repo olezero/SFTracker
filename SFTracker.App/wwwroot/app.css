@@ -45,6 +45,37 @@ a, .btn-link {
     box-shadow: none;
 }
 
+/* Dashboard: the three cards live in a Gridstack grid (DashboardGrid): drag by the card header,
+   resize from the bottom-right corner. Each card fills its cell and scrolls its own body, so the
+   footer of the balance card and the headers stay put. */
+/* Gridstack puts an 8px margin inside every cell (see sftracker.dashboard in App.razor). Pull the
+   grid out by the same amount so the outer card edges line up with the game bar above, and the
+   gap below it equals the gap between cards. */
+.grid-stack {
+    margin: -8px -8px 0;
+}
+
+.grid-stack-item-content {
+    overflow: hidden !important;
+}
+
+.grid-stack-item-content > .card {
+    height: 100%;
+}
+
+.grid-stack-item-content > .card > .card-body {
+    overflow: auto;
+    min-height: 0;
+}
+
+.grid-stack .card-header {
+    cursor: grab;
+}
+
+.grid-stack .card-header:active {
+    cursor: grabbing;
+}
+
 /* Factory list: SortableList wraps each factory in a .list-group-item; highlight the one
    whose row is selected. */
 .list-group-item:has(.sortable-factory-item.selected) {

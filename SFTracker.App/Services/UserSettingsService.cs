@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using SFTracker.Constants;
 
 namespace SFTracker.Services;
 
@@ -11,6 +12,9 @@ public class UserSettings {
 	/// appsettings.json connection string). Null/empty = use the appsettings.json default.
 	/// </summary>
 	public string? DatabasePath { get; set; }
+
+	/// <summary>Dashboard card positions/sizes by card id (see <see cref="DashboardLayout"/>). Null = defaults.</summary>
+	public Dictionary<string, CardLayout>? Layout { get; set; }
 }
 
 /// <summary>
@@ -28,6 +32,7 @@ public class UserSettingsService {
 
 	private readonly string m_contentRoot;
 	private readonly string m_defaultDatabasePath;
+	private readonly SemaphoreSlim m_saveLock = new(1, 1);
 
 	public UserSettingsService(IConfiguration configuration, IHostEnvironment environment) {
 		m_contentRoot = environment.ContentRootPath;
@@ -65,9 +70,18 @@ public class UserSettingsService {
 		if (string.IsNullOrWhiteSpace(settings.DatabasePath))
 			settings.DatabasePath = null;
 
-		await File.WriteAllTextAsync(FilePath, JsonSerializer.Serialize(settings, s_jsonOptions));
-		Settings = settings;
+		await m_saveLock.WaitAsync();
+		try {
+			await File.WriteAllTextAsync(FilePath, JsonSerializer.Serialize(settings, s_jsonOptions));
+			Settings = settings;
+		} finally {
+			m_saveLock.Release();
+		}
 	}
+
+	/// <summary>Saves only the dashboard layout (null = back to defaults), keeping the other settings.</summary>
+	public Task SaveLayoutAsync(Dictionary<string, CardLayout>? layout) =>
+		SaveAsync(new UserSettings { DatabasePath = Settings.DatabasePath, Layout = layout });
 
 	private UserSettings Load() {
 		if (!File.Exists(FilePath))

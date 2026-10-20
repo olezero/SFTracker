@@ -1,27 +1,33 @@
 @inject FactoryService FactoryService
 @inject GameService GameService
 @inject NetworkService NetworkService
+@inject UserSettingsService UserSettings
 
 <GameSelector Games="@games" SelectedGame="@selectedGame" SelectedGameChanged="@OnGameSelected"
 	OnGameOperation="@OnGameOperation" FluidDivisorChanged="@OnFluidDivisorChanged" />
 
-<div class="row g-3">
-	<div class="col-lg-3">
-		<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory" Networks="@networks"
-			SelectedFactoryChanged="@OnFactorySelected" OnFactoryListChanged="@OnFactoryListChanged"
-			OnFactoryOperation="@OnFactoryOperation" />
-
-		<div class="mt-3">
+@* The three cards sit in a Gridstack grid; see DashboardGrid. The wrappers are static on purpose. *@
+<DashboardGrid>
+	<div class="grid-stack-item" gs-id="@DashboardLayout.Factories" @attributes="GridAttributes(DashboardLayout.Factories)">
+		<div class="grid-stack-item-content">
+			<FactoryList @ref="factoryListComponent" Factories="@factories" SelectedFactory="@selectedFactory" Networks="@networks"
+				SelectedFactoryChanged="@OnFactorySelected" OnFactoryListChanged="@OnFactoryListChanged"
+				OnFactoryOperation="@OnFactoryOperation" />
+		</div>
+	</div>
+	<div class="grid-stack-item" gs-id="@DashboardLayout.Balance" @attributes="GridAttributes(DashboardLayout.Balance)">
+		<div class="grid-stack-item-content">
 			<ResourceBalance @ref="resourceBalance" GameId="@(selectedGame?.Id ?? 0)" FluidDivisor="@FluidDivisor" />
 		</div>
 	</div>
-
-	<div class="col-lg-9">
-		<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes" FluidDivisor="@FluidDivisor"
-			OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
-			OnChanged="@LoadDataAndRefreshBalance" />
+	<div class="grid-stack-item" gs-id="@DashboardLayout.Detail" @attributes="GridAttributes(DashboardLayout.Detail)">
+		<div class="grid-stack-item-content">
+			<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes" FluidDivisor="@FluidDivisor"
+				OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
+				OnChanged="@LoadDataAndRefreshBalance" />
+		</div>
 	</div>
-</div>
+</DashboardGrid>
 
 @code {
 	private ResourceBalance? resourceBalance;
@@ -40,7 +46,17 @@
 
 	private int FluidDivisor => selectedGame?.FluidDivisor ?? 1;
 
+	// Snapshot of the saved dashboard layout at startup. Gridstack reads these attributes once on init
+	// and owns the positions from then on, so they must not follow later changes to the settings.
+	private Dictionary<string, CardLayout>? initialLayout;
+
+	private Dictionary<string, object> GridAttributes(string cardId) {
+		var layout = DashboardLayout.Resolve(initialLayout, cardId);
+		return new() { ["gs-x"] = layout.X, ["gs-y"] = layout.Y, ["gs-w"] = layout.W, ["gs-h"] = layout.H };
+	}
+
 	protected override async Task OnInitializedAsync() {
+		initialLayout = UserSettings.Settings.Layout;
 		allParts = await FactoryService.GetAllPartsAsync();
 		allRecipes = await FactoryService.GetAllRecipesAsync();
 		await LoadGames();

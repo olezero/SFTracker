@@ -18,6 +18,14 @@
 			<div>Currently using: <code>@UserSettings.EffectiveDatabasePath</code></div>
 			<div>Saved to: <code>@UserSettings.FilePath</code></div>
 		</div>
+		<hr>
+		<div class="d-flex align-items-center">
+			<div class="flex-grow-1">
+				<div class="form-label mb-0">Dashboard layout</div>
+				<div class="form-text mt-0">Drag cards by their header and resize from the bottom-right corner; the layout is saved automatically.</div>
+			</div>
+			<Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="ResetLayout" Disabled="@(saving || UserSettings.Settings.Layout == null)">Reset layout</Button>
+		</div>
 		@if (error != null)
 		{
 			<div class="alert alert-danger mt-3 mb-0 py-2">@error</div>
@@ -63,7 +71,7 @@
 		var previous = UserSettings.Settings;
 		try
 		{
-			await UserSettings.SaveAsync(new UserSettings { DatabasePath = databasePath });
+			await UserSettings.SaveAsync(new UserSettings { DatabasePath = databasePath, Layout = previous.Layout });
 			// Create/seed the database at the new location; if that fails, put the old settings back
 			// so the app still starts next time.
 			await DatabaseInitializer.InitializeAsync(Services);
@@ -77,6 +85,13 @@
 		}
 
 		// Existing circuits still hold a DbContext on the old file; a full reload starts a fresh one.
+		Navigation.NavigateTo("/", forceLoad: true);
+	}
+
+	private async Task ResetLayout()
+	{
+		await UserSettings.SaveLayoutAsync(null);
+		// The grid reads its layout once at startup, so reload to apply the defaults.
 		Navigation.NavigateTo("/", forceLoad: true);
 	}
 }

@@ -236,3 +236,11 @@ h1:focus {
 	font-size: 0.75rem;
 	color: #7a7a7a;
 }
+
+/* Instant modals everywhere. Blazor.Bootstrap hardcodes the "fade" class; Bootstrap's JS just
+   waits for the CSS transition, so a zero-length transition makes show/hide immediate. */
+.modal,
+.modal .modal-dialog,
+.modal-backdrop {
+	transition: none !important;
+}

@@ -22,26 +22,9 @@
 		<div class="flex-grow-1">
 			<div class="fw-bold mb-1 d-flex align-items-center">
 				<span>@factoryRecipe.Recipe.Name</span>
-				@if (editingRecipeId == factoryRecipe.Id)
-				{
-					<div class="ms-auto d-flex align-items-center">
-						<input type="number" class="form-control form-control-sm me-1" @bind="editingRecipeMultiplier" @bind:event="oninput"
-							@onkeydown="e => OnEditRecipeKeyDown(e, factoryRecipe.Id)"
-							style="width: 70px;" step="0.1" min="0.1" />
-						<button class="btn btn-sm btn-success me-1" title="Save" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
-							<i class="bi bi-check"></i>
-						</button>
-						<button class="btn btn-sm btn-secondary" title="Cancel" @onclick="CancelRecipeEdit">
-							<i class="bi bi-x"></i>
-						</button>
-					</div>
-				}
-				else
-				{
-					<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
-						title="Machines needed - click to edit"
-						@onclick="() => StartEditRecipe(factoryRecipe)">@FormatNumber(factoryRecipe.Multiplier) x</span>
-				}
+				<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
+					title="Machines needed - click to edit"
+					@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
 			</div>
 			<div class="row g-0">
 				<!-- Recipe Inputs -->
@@ -157,7 +140,7 @@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
 	InitialIsSlooped="editModalInitialIsSlooped" FluidDivisor="@FluidDivisor"
-	HighlightInputId="editModalHighlightInputId" HighlightOutputId="editModalHighlightOutputId"
+	HighlightInputId="editModalHighlightInputId" HighlightOutputId="editModalHighlightOutputId" HighlightMultiplier="editModalHighlightMultiplier"
 	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
 
 @code {
@@ -171,10 +154,6 @@
 	private List<FactoryRecipe> OrderedRecipes =>
 		SelectedFactory.Recipes.OrderBy(r => r.Sorting).ThenBy(r => r.Id).ToList();
 
-	// Edit mode fields for recipes
-	private int? editingRecipeId = null;
-	private double editingRecipeMultiplier = 0;
-
 	// Recipe modals
 	private RecipeEditorModal? advancedEditRecipeModal;
 
@@ -185,6 +164,7 @@
 	private int? editModalFactoryRecipeId;
 	private int? editModalHighlightInputId;
 	private int? editModalHighlightOutputId;
+	private bool editModalHighlightMultiplier;
 
 	// Recipe hover card state (for the per-ingredient "+" dropdowns)
 	private DbRecipe? tipRecipe;
@@ -196,37 +176,6 @@
 	private int? pendingDeleteRecipeId = null;
 	private System.Threading.Timer? deleteConfirmationTimer;
 	private const int DeleteConfirmationSeconds = 3;
-
-	private void StartEditRecipe(FactoryRecipe factoryRecipe)
-	{
-		editingRecipeId = factoryRecipe.Id;
-		editingRecipeMultiplier = factoryRecipe.Multiplier;
-	}
-
-	private async Task SaveRecipeEdit(int factoryRecipeId)
-	{
-		if (editingRecipeMultiplier > 0)
-		{
-			var factoryRecipe = SelectedFactory.Recipes.First(r => r.Id == factoryRecipeId);
-			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, editingRecipeMultiplier, factoryRecipe.IsSlooped);
-			await OnRecipeChanged.InvokeAsync();
-			CancelRecipeEdit();
-		}
-	}
-
-	private async Task OnEditRecipeKeyDown(KeyboardEventArgs e, int factoryRecipeId)
-	{
-		if (e.Key == "Enter")
-			await SaveRecipeEdit(factoryRecipeId);
-		else if (e.Key == "Escape")
-			CancelRecipeEdit();
-	}
-
-	private void CancelRecipeEdit()
-	{
-		editingRecipeId = null;
-		editingRecipeMultiplier = 0;
-	}
 
 	private async Task OnRecipeListUpdate(SortableListEventArgs args)
 	{
@@ -310,7 +259,7 @@
 		await OnRecipeChanged.InvokeAsync();
 	}
 
-	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe, int? highlightInputId = null, int? highlightOutputId = null)
+	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe, int? highlightInputId = null, int? highlightOutputId = null, bool highlightMultiplier = false)
 	{
 		if (advancedEditRecipeModal != null)
 		{
@@ -321,6 +270,7 @@
 			editModalFactoryRecipeId = factoryRecipe.Id;
 			editModalHighlightInputId = highlightInputId;
 			editModalHighlightOutputId = highlightOutputId;
+			editModalHighlightMultiplier = highlightMultiplier;
 			StateHasChanged(); // Trigger re-render to pass new parameters
 			await advancedEditRecipeModal.ShowModal();
 		}

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A single-project ASP.NET Core / Blazor Server app (`SFTracker.App`, .NET 9) for planning **Satisfactory** factories: you compose factories out of game recipes with production multipliers, mark manual inputs/outputs, and see a running resource balance (surplus/deficit per part) for one factory or across all of them.
+A single-project ASP.NET Core / Blazor Server app (`SFTracker.App`, .NET 10) for planning **Satisfactory** factories: you compose factories out of game recipes with production multipliers, mark manual inputs/outputs, and see a running resource balance (surplus/deficit per part) for one factory or across all of them.
 
 It is a purely local personal hobby tool (never deployed) — keep changes proportionate and don't over-engineer.
 

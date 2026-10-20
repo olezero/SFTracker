@@ -1,17 +1,20 @@
-@if (SelectedFactory != null)
-{
-	<div class="card">
-		<div class="card-header d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">@SelectedFactory.Name</h5>
-			<div>
-				<button class="btn btn-secondary btn-sm me-2" @onclick="OnShowUpdateFactoryModal">
-					<i class="bi bi-pencil"></i> Edit
-				</button>
-				<button class="btn btn-secondary btn-sm" @onclick="OnDeleteSelectedFactory">
-					<i class="bi bi-trash"></i> Delete
-				</button>
-			</div>
+@* One card with one stable header no matter what is selected: the header is the Gridstack drag
+   handle and Gridstack binds to the element it finds at init, so it must never be re-created. *@
+<div class="card">
+	<div class="card-header d-flex justify-content-between align-items-center">
+		<h5 class="mb-0 @(SelectedFactory == null ? "text-muted" : "")">@(SelectedFactory?.Name ?? "Factory")</h5>
+		@* Invisible when nothing is selected so the header keeps the same height. *@
+		<div class="@(SelectedFactory == null ? "invisible" : "")">
+			<button class="btn btn-secondary btn-sm me-2" @onclick="OnShowUpdateFactoryModal" tabindex="@(SelectedFactory == null ? -1 : 0)">
+				<i class="bi bi-pencil"></i> Edit
+			</button>
+			<button class="btn btn-secondary btn-sm" @onclick="OnDeleteSelectedFactory" tabindex="@(SelectedFactory == null ? -1 : 0)">
+				<i class="bi bi-trash"></i> Delete
+			</button>
 		</div>
+	</div>
+	@if (SelectedFactory != null)
+	{
 		@* Body scrolls (recipes + manual inputs/outputs); the add forms stay pinned in the footer. *@
 		<div class="card-body">
 			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" FluidDivisor="@FluidDivisor"
@@ -22,22 +25,15 @@
 			<AddForms SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts" FluidDivisor="@FluidDivisor"
 				OnAdded="@OnChanged" />
 		</div>
-	</div>
-}
-else
-{
-	<div class="card">
-		<div class="card-header d-flex justify-content-between align-items-center">
-			<h5 class="mb-0 text-muted">Factory</h5>
-			@* Invisible spacer so this header is as tall as the one with the Edit/Delete buttons. *@
-			<button class="btn btn-secondary btn-sm invisible" tabindex="-1" aria-hidden="true">Edit</button>
-		</div>
+	}
+	else
+	{
 		<div class="card-body text-center text-muted">
 			<h5>Select a factory to view details</h5>
 			<p>Choose a factory from the list on the left to view and edit its inputs and outputs.</p>
 		</div>
-	</div>
-}
+	}
+</div>
 
 @code {
 	[Parameter] public Factory? SelectedFactory { get; set; }

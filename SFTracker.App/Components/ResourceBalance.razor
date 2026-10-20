@@ -59,8 +59,9 @@
 							</tr>
 						</thead>
 						<tbody>
-							@foreach (var part in partBalances.OrderByDescending(p => p.Balance).ThenBy(p => p.PartName))
+							@foreach (var part in partBalances.Where(IsCategoryShown).OrderByDescending(p => p.Balance).ThenBy(p => p.PartName))
 							{
+								var category = GetCategory(part);
 								<tr>
 									<td style="max-width: 0;">
 										<div class="d-flex align-items-center">
@@ -81,11 +82,11 @@
 											class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
 									</td>
 									<td class="text-end">
-										@if (Math.Abs(part.Balance) < DisplayConstants.BalanceThreshold)
+										@if (category == BalanceCategory.Balanced)
 										{
 											<span class="text-secondary fw-bold">0.0</span>
 										}
-										else if (part.Balance > 0)
+										else if (category == BalanceCategory.Surplus)
 										{
 											<span
 												class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
@@ -98,32 +99,33 @@
 									</td>
 								</tr>
 							}
+							@if (!partBalances.Any(IsCategoryShown))
+							{
+								<tr><td colspan="5" class="text-center text-muted py-3"><small>All rows hidden — click a category below to show it</small></td></tr>
+							}
 						</tbody>
 					</table>
 				</div>
 			</div>
 
-			<!-- Summary footer -->
+			<!-- Summary footer: counts per category; click a tile to hide/show those rows -->
 			<div class="card-footer bg-dark p-2">
-				<div class="row text-center">
-					<div class="col-4">
-						<small class="text-success fw-bold">@partBalances.Count(p => p.Balance >
-													DisplayConstants.BalanceThreshold)</small>
-					<div><small class="text-muted">Surplus</small></div>
-				</div>
-				<div class="col-4">
-					<small class="text-danger fw-bold">@partBalances.Count(p => p.Balance <
-												-DisplayConstants.BalanceThreshold)</small>
-					<div><small class="text-muted">Deficit</small></div>
-				</div>
-				<div class="col-4">
-					<small class="text-secondary fw-bold">@partBalances.Count(p => Math.Abs(p.Balance) <=
-												DisplayConstants.BalanceThreshold)</small>
-					<div><small class="text-muted">Balanced</small></div>
+				<div class="row text-center g-0">
+					@foreach (var category in new[] { BalanceCategory.Surplus, BalanceCategory.Deficit, BalanceCategory.Balanced })
+					{
+						var shown = IsCategoryShown(category);
+						<div class="col-4">
+							<button type="button" class="btn btn-link text-decoration-none p-0 w-100 lh-sm @(shown ? "" : "opacity-50")"
+								title="@(shown ? $"Hide {category.ToString().ToLower()} rows" : $"Show {category.ToString().ToLower()} rows")"
+								@onclick="() => ToggleCategory(category)">
+								<small class="@CategoryTextClass(category) fw-bold">@partBalances.Count(p => GetCategory(p) == category)</small>
+								<div><small class="text-muted">@category @(shown ? "" : "(hidden)")</small></div>
+							</button>
+						</div>
+					}
 				</div>
 			</div>
-		</div>
-				}
+		}
 		else
 		{
 			<div class="text-center text-muted p-3">
@@ -146,6 +148,30 @@
 	private int lastFluidDivisor = -1;
 	private List<PartBalance> partBalances = new();
 	private bool isLoading = true;
+
+	// Which balance categories are listed; toggled from the footer tiles.
+	private enum BalanceCategory { Surplus, Deficit, Balanced }
+	private readonly HashSet<BalanceCategory> hiddenCategories = new();
+
+	private static BalanceCategory GetCategory(PartBalance part) =>
+		part.Balance > DisplayConstants.BalanceThreshold ? BalanceCategory.Surplus
+		: part.Balance < -DisplayConstants.BalanceThreshold ? BalanceCategory.Deficit
+		: BalanceCategory.Balanced;
+
+	private bool IsCategoryShown(BalanceCategory category) => !hiddenCategories.Contains(category);
+	private bool IsCategoryShown(PartBalance part) => IsCategoryShown(GetCategory(part));
+
+	private void ToggleCategory(BalanceCategory category)
+	{
+		if (!hiddenCategories.Remove(category))
+			hiddenCategories.Add(category);
+	}
+
+	private static string CategoryTextClass(BalanceCategory category) => category switch {
+		BalanceCategory.Surplus => "text-success",
+		BalanceCategory.Deficit => "text-danger",
+		_ => "text-secondary"
+	};
 	private CancellationTokenSource? _debounceTokenSource;
 
 	// Selector value: "all", "network:<id>" or "<factoryId>".

@@ -61,14 +61,17 @@ public class UserSettingsService {
 	/// <summary>Expands "~" and makes relative paths relative to the project folder.</summary>
 	public string ResolvePath(string path) {
 		path = path.Trim();
-		if (path == "~" || path.StartsWith("~/") || path.StartsWith("~\\"))
+		if (path == "~" || path.StartsWith("~/") || path.StartsWith("~\\")) {
 			path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path.Length > 1 ? path[2..] : "");
+		}
+
 		return Path.GetFullPath(path, m_contentRoot);
 	}
 
 	public async Task SaveAsync(UserSettings settings) {
-		if (string.IsNullOrWhiteSpace(settings.DatabasePath))
+		if (string.IsNullOrWhiteSpace(settings.DatabasePath)) {
 			settings.DatabasePath = null;
+		}
 
 		await m_saveLock.WaitAsync();
 		try {
@@ -98,8 +101,10 @@ public class UserSettingsService {
 	}
 
 	private UserSettings Load() {
-		if (!File.Exists(FilePath))
+		if (!File.Exists(FilePath)) {
 			return new UserSettings();
+		}
+
 		try {
 			return JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(FilePath), s_jsonOptions) ?? new UserSettings();
 		} catch (JsonException) {

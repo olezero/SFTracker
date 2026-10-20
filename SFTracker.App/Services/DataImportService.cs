@@ -78,15 +78,15 @@ public class DataImportService {
 	/// <summary>Parses a game-data number, which is either plain ("30", "-1") or a fraction ("12/5", "-9/5").</summary>
 	public static double ParseNumber(string value) {
 		var parts = value.Split('/');
-		if (parts.Length == 1 && TryParse(parts[0], out var number)) {
+		if (parts.Length == 1 && tryParse(parts[0], out var number)) {
 			return number;
 		}
-		if (parts.Length == 2 && TryParse(parts[0], out var numerator) && TryParse(parts[1], out var denominator) && denominator != 0) {
+		if (parts.Length == 2 && tryParse(parts[0], out var numerator) && tryParse(parts[1], out var denominator) && denominator != 0) {
 			return numerator / denominator;
 		}
 		throw new FormatException($"Invalid number in game data: '{value}'");
 
-		static bool TryParse(string s, out double result) =>
+		static bool tryParse(string s, out double result) =>
 			double.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out result);
 	}
 }

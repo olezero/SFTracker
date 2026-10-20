@@ -124,12 +124,17 @@ public class GameTransferService {
 		} catch (JsonException ex) {
 			throw new GameImportException($"Not valid JSON: {ex.Message}");
 		}
-		if (export == null || export.Format != Format)
+		if (export == null || export.Format != Format) {
 			throw new GameImportException($"Not an SFTracker game export (expected \"format\": \"{Format}\").");
-		if (export.Version > Version)
+		}
+
+		if (export.Version > Version) {
 			throw new GameImportException($"Export version {export.Version} is newer than this app supports ({Version}).");
-		if (string.IsNullOrWhiteSpace(export.Name))
+		}
+
+		if (string.IsNullOrWhiteSpace(export.Name)) {
 			throw new GameImportException("The export has no game name.");
+		}
 
 		// Resolve every referenced part/recipe up front so a bad document fails before anything is written.
 		var partsByName = await m_context.Parts.ToDictionaryAsync(p => p.Name);
@@ -141,23 +146,36 @@ public class GameTransferService {
 
 		var missing = new SortedSet<string>();
 		foreach (var f in export.Factories) {
-			foreach (var a in f.Inputs.Concat(f.Outputs))
-				if (!partsByName.ContainsKey(a.Part)) missing.Add($"part \"{a.Part}\"");
+			foreach (var a in f.Inputs.Concat(f.Outputs)) {
+				if (!partsByName.ContainsKey(a.Part)) {
+					missing.Add($"part \"{a.Part}\"");
+				}
+			}
+
 			foreach (var r in f.Recipes) {
 				if (!recipesByName.TryGetValue(r.Recipe, out var recipe)) {
 					missing.Add($"recipe \"{r.Recipe}\"");
 					continue;
 				}
-				foreach (var name in r.DisabledInputs)
-					if (!recipe.Inputs.Any(i => i.Part.Name == name)) missing.Add($"input \"{name}\" of recipe \"{r.Recipe}\"");
-				foreach (var name in r.DisabledOutputs)
-					if (!recipe.Outputs.Any(o => o.Part.Name == name)) missing.Add($"output \"{name}\" of recipe \"{r.Recipe}\"");
+				foreach (var name in r.DisabledInputs) {
+					if (!recipe.Inputs.Any(i => i.Part.Name == name)) {
+						missing.Add($"input \"{name}\" of recipe \"{r.Recipe}\"");
+					}
+				}
+
+				foreach (var name in r.DisabledOutputs) {
+					if (!recipe.Outputs.Any(o => o.Part.Name == name)) {
+						missing.Add($"output \"{name}\" of recipe \"{r.Recipe}\"");
+					}
+				}
 			}
-			if (f.Network != null && !export.Networks.Contains(f.Network))
+			if (f.Network != null && !export.Networks.Contains(f.Network)) {
 				export.Networks.Add(f.Network);
+			}
 		}
-		if (missing.Count > 0)
+		if (missing.Count > 0) {
 			throw new GameImportException("Unknown in this database: " + string.Join(", ", missing));
+		}
 
 		var fluidDivisor = Constants.FluidParts.AllowedDivisors.Contains(export.FluidDivisor) ? export.FluidDivisor : 1;
 		var game = new Game {
@@ -166,8 +184,9 @@ public class GameTransferService {
 		};
 
 		var networksByName = export.Networks.Distinct().ToDictionary(n => n, n => new Network { Name = n, Game = game });
-		foreach (var network in networksByName.Values)
+		foreach (var network in networksByName.Values) {
 			game.Networks.Add(network);
+		}
 
 		foreach (var f in export.Factories) {
 			var factory = new Factory {
@@ -176,10 +195,14 @@ public class GameTransferService {
 				Game = game,
 				Network = f.Network != null ? networksByName[f.Network] : null
 			};
-			foreach (var a in f.Inputs)
+			foreach (var a in f.Inputs) {
 				factory.Inputs.Add(new FactoryInput { PartId = partsByName[a.Part].Id, AmountPerMinute = a.AmountPerMinute });
-			foreach (var a in f.Outputs)
+			}
+
+			foreach (var a in f.Outputs) {
 				factory.Outputs.Add(new FactoryOutput { PartId = partsByName[a.Part].Id, AmountPerMinute = a.AmountPerMinute });
+			}
+
 			foreach (var r in f.Recipes) {
 				var recipe = recipesByName[r.Recipe];
 				var factoryRecipe = new FactoryRecipe {
@@ -189,16 +212,20 @@ public class GameTransferService {
 					IsActive = true,
 					Sorting = r.Sorting
 				};
-				foreach (var name in r.DisabledInputs.Distinct())
+				foreach (var name in r.DisabledInputs.Distinct()) {
 					factoryRecipe.InputOverrides.Add(new FactoryRecipeInputOverride {
 						RecipeInputId = recipe.Inputs.First(i => i.Part.Name == name).Id,
 						IsEnabled = false
 					});
-				foreach (var name in r.DisabledOutputs.Distinct())
+				}
+
+				foreach (var name in r.DisabledOutputs.Distinct()) {
 					factoryRecipe.OutputOverrides.Add(new FactoryRecipeOutputOverride {
 						RecipeOutputId = recipe.Outputs.First(o => o.Part.Name == name).Id,
 						IsEnabled = false
 					});
+				}
+
 				factory.Recipes.Add(factoryRecipe);
 			}
 			game.Factories.Add(factory);
@@ -213,8 +240,10 @@ public class GameTransferService {
 		var existing = await m_context.Games.Select(g => g.Name).ToListAsync();
 		var taken = new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase);
 		var name = baseName;
-		for (var i = 2; taken.Contains(name); i++)
+		for (var i = 2; taken.Contains(name); i++) {
 			name = $"{baseName} ({i})";
+		}
+
 		return name;
 	}
 }

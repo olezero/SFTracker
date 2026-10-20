@@ -19,7 +19,7 @@ public class PartBalance {
 public static class BalanceCalculator {
 	public static List<PartBalance> Calculate(IEnumerable<Factory> factories, int fluidDivisor = 1) {
 		var byPartId = new Dictionary<int, PartBalance>();
-		PartBalance For(DbPart part) {
+		PartBalance balanceFor(DbPart part) {
 			if (!byPartId.TryGetValue(part.Id, out var balance)) {
 				balance = byPartId[part.Id] = new PartBalance { Part = part };
 			}
@@ -28,17 +28,17 @@ public static class BalanceCalculator {
 
 		foreach (var factory in factories) {
 			foreach (var input in factory.Inputs) {
-				For(input.Part).Consumption += input.AmountPerMinute;
+				balanceFor(input.Part).Consumption += input.AmountPerMinute;
 			}
 			foreach (var output in factory.Outputs) {
-				For(output.Part).Production += output.AmountPerMinute;
+				balanceFor(output.Part).Production += output.AmountPerMinute;
 			}
 			foreach (var factoryRecipe in factory.Recipes.Where(r => r.IsActive)) {
 				foreach (var input in factoryRecipe.Recipe.Inputs.Where(i => factoryRecipe.IsInputEnabled(i.Id))) {
-					For(input.Part).Consumption += input.GetQuantityPerMinute(factoryRecipe, fluidDivisor);
+					balanceFor(input.Part).Consumption += input.GetQuantityPerMinute(factoryRecipe, fluidDivisor);
 				}
 				foreach (var output in factoryRecipe.Recipe.Outputs.Where(o => factoryRecipe.IsOutputEnabled(o.Id))) {
-					For(output.Part).Production += output.GetQuantityPerMinute(factoryRecipe, fluidDivisor);
+					balanceFor(output.Part).Production += output.GetQuantityPerMinute(factoryRecipe, fluidDivisor);
 				}
 			}
 		}

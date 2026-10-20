@@ -15,8 +15,9 @@ public static class DatabaseInitializer {
 		// SQLite creates the file but not its folder.
 		var dbPath = scoped.GetRequiredService<UserSettingsService>().EffectiveDatabasePath;
 		var dbDir = Path.GetDirectoryName(dbPath);
-		if (!string.IsNullOrEmpty(dbDir))
+		if (!string.IsNullOrEmpty(dbDir)) {
 			Directory.CreateDirectory(dbDir);
+		}
 
 		var context = scoped.GetRequiredService<SFTrackerDbContext>();
 		await context.Database.EnsureCreatedAsync();

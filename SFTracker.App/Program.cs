@@ -16,9 +16,13 @@ builder.Services.Configure<HostOptions>(options => {
 
 builder.Services.AddBlazorBootstrap();
 
-// Add Entity Framework
-builder.Services.AddDbContext<SFTrackerDbContext>((options) => {
-	options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+// Per-machine overrides (usersettings.json); decides which database file is used.
+builder.Services.AddSingleton<UserSettingsService>();
+
+// Add Entity Framework. The connection string is read per scope so a database path change in the
+// settings UI takes effect for new circuits without restarting the app.
+builder.Services.AddDbContext<SFTrackerDbContext>((serviceProvider, options) => {
+	options.UseSqlite(serviceProvider.GetRequiredService<UserSettingsService>().ConnectionString);
 	options.EnableDetailedErrors();
 	options.EnableSensitiveDataLogging();
 });
@@ -37,25 +41,12 @@ if (!app.Environment.IsDevelopment()) {
 	app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-
 // Initialize game info service
-var gameInfoService = services.GetRequiredService<GameInfoService>();
+var gameInfoService = app.Services.GetRequiredService<GameInfoService>();
 await gameInfoService.InitializeAsync();
 
-// Initialize database
-var context = services.GetRequiredService<SFTrackerDbContext>();
-await context.Database.EnsureCreatedAsync();
-
-// Import parts if needed
-var dataImportService = services.GetRequiredService<DataImportService>();
-await dataImportService.ImportPartsAsync();
-await dataImportService.ImportRecipesAsync();
-
-// Make sure there is at least one game to put factories in
-var gameService = services.GetRequiredService<GameService>();
-await gameService.EnsureDefaultGameAsync();
+// Create/seed the database (see DatabaseInitializer; also re-run when the database path changes)
+await DatabaseInitializer.InitializeAsync(app.Services);
 
 app.UseAntiforgery();
 app.MapStaticAssets();

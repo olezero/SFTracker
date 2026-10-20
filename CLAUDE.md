@@ -22,11 +22,11 @@ There is no test project. Verify changes with `dotnet build`; the user does the 
 
 ## Architecture
 
-**Startup (`Program.cs`)** runs a fixed initialization sequence on boot inside a service scope:
+**Startup (`Program.cs`)** runs a fixed initialization sequence on boot:
 1. `GameInfoService.InitializeAsync()` — loads `game_data.json` into memory.
-2. `context.Database.EnsureCreatedAsync()` — a fresh DB is created from the current EF model. **Migrations are not applied at runtime.**
-3. `DataImportService.ImportParts/RecipesAsync()` — idempotent seed (skips if tables non-empty).
-4. `GameService.EnsureDefaultGameAsync()` — creates "Game 1" if the `Games` table is empty.
+2. `DatabaseInitializer.InitializeAsync(app.Services)` (own scope), which does: `context.Database.EnsureCreatedAsync()` — a fresh DB is created from the current EF model (**migrations are not applied at runtime**); `DataImportService.ImportParts/RecipesAsync()` — idempotent seed (skips if tables non-empty); `GameService.EnsureDefaultGameAsync()` — creates "Game 1" if the `Games` table is empty. The same method is re-run when the user changes the database path in the settings modal.
+
+**User settings (`UserSettingsService`, singleton):** per-machine overrides live in `SFTracker.App/usersettings.json` (gitignored, next to `appsettings.json`). Currently only `DatabasePath` (absolute, `~`-prefixed, or relative to the project folder); empty/missing = the `DefaultConnection` path from `appsettings.json`. The DbContext's connection string is read from this service per scope, so a change applies to new circuits; `SettingsModal` (gear button in the `GameSelector` bar) saves the file, runs `DatabaseInitializer` on the new file, and force-reloads the page. The point is to let the DB live outside the repo (e.g. in its own git repo).
 
 **Schema changes and the live DB (important):** because startup uses `EnsureCreated`, it never alters an existing database. The `Migrations/` folder is stale (it stops at `AddIsSloopedToFactoryRecipe`; `FactoryRecipe.Sorting`, the `Games` table (including `Games.FluidDivisor`) and `GameId` on `Factories`/`Networks` were all applied to the live DB by hand with `ALTER TABLE`, so those `GameId` columns have no real FK constraint — `GameService.DeleteGameAsync` deletes factories explicitly for that reason). When you add a column/table, either apply it manually with `sqlite3 Database/sftracker.db "ALTER TABLE ..."` (preserves the user's factories) or tell the user to delete `Database/sftracker.db*` so it is recreated. Don't rely on `dotnet ef database update`.
 
@@ -34,7 +34,7 @@ There is no test project. Verify changes with `dotnet build`; the user does the 
 - `Services/Data/*` (`GameData`, `Recipe`, `Part`, `Machine`, …) — plain DTOs deserialized from `game_data.json`. Read-only game reference data held in the singleton `GameInfoService`.
 - `Models/Db*` and the factory entities — EF Core entities persisted to SQLite. `DataImportService` copies the JSON DTOs into `DbPart`/`DbRecipe`/`DbRecipeInput`/`DbRecipeOutput` on first run.
 
-**Persistence:** SQLite at `Database/sftracker.db` (connection string in `appsettings.json`, path is relative to the working dir so it resolves to the repo-root `Database/` folder). The `Database/*.db*` files are gitignored.
+**Persistence:** SQLite at `Database/sftracker.db` by default (connection string `../Database/sftracker.db` in `appsettings.json`, resolved against the project folder, so it lands in the repo-root `Database/` folder), unless `usersettings.json` overrides it (see above). The `Database/*.db*` files are gitignored.
 
 **Recipe/factory schema (the core relationships):**
 - `Game` is the top-level container (one per Satisfactory save). Every `Factory` and `Network` has a required `GameId`; factory names are unique per game, not globally. `Game.LastOpenedAt` is bumped on selection and decides which game opens on startup.

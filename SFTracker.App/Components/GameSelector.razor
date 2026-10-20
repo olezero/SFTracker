@@ -31,7 +31,13 @@
 			<option value="@divisor" selected="@(divisor == (SelectedGame?.FluidDivisor ?? 1))">@divisor</option>
 		}
 	</select>
+
+	<button class="btn btn-secondary btn-sm ms-auto" title="Settings" @onclick="() => settingsModal.ShowAsync()">
+		<i class="bi bi-gear"></i>
+	</button>
 </div>
+
+<SettingsModal @ref="settingsModal" />
 
 <Modal @ref="createModal" Title="New Game">
 	<BodyTemplate>
@@ -70,6 +76,7 @@
 
 	private Modal createModal = default!;
 	private Modal renameModal = default!;
+	private SettingsModal settingsModal = default!;
 	private string editName = "";
 
 	private async Task OnSelectChanged(ChangeEventArgs e)

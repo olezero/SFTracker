@@ -1,0 +1,83 @@
+@using BlazorBootstrap
+@inject UserSettingsService UserSettings
+@inject IServiceProvider Services
+@inject NavigationManager Navigation
+
+<Modal @ref="modal" Title="Settings">
+	<BodyTemplate>
+		<div class="mb-3">
+			<label for="databasePath" class="form-label">Database file</label>
+			<input type="text" class="form-control" id="databasePath" @bind="databasePath" @bind:event="oninput"
+				@onkeydown="OnKeyDown" placeholder="@UserSettings.DefaultDatabasePath" disabled="@saving">
+			<div class="form-text">
+				Absolute, or relative to the project folder. Leave empty to use the default from appsettings.json
+				(<code>@UserSettings.DefaultDatabasePath</code>). A file that doesn't exist yet is created and seeded with
+				a fresh game, so copy the current file there first if you want to keep your factories.
+			</div>
+		</div>
+		<div class="small text-muted">
+			<div>Currently using: <code>@UserSettings.EffectiveDatabasePath</code></div>
+			<div>Saved to: <code>@UserSettings.FilePath</code></div>
+		</div>
+		@if (error != null)
+		{
+			<div class="alert alert-danger mt-3 mb-0 py-2">@error</div>
+		}
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="Hide" Disabled="@saving">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="Save" Disabled="@saving" Loading="@saving">Save &amp; reload</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+	private Modal modal = default!;
+	private string databasePath = "";
+	private string? error;
+	private bool saving;
+
+	public async Task ShowAsync()
+	{
+		databasePath = UserSettings.Settings.DatabasePath ?? "";
+		error = null;
+		saving = false;
+		await modal.ShowAsync();
+	}
+
+	private async Task Hide()
+	{
+		await modal.HideAsync();
+	}
+
+	private async Task OnKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter") await Save();
+		else if (e.Key == "Escape") await Hide();
+	}
+
+	private async Task Save()
+	{
+		if (saving) return;
+		saving = true;
+		error = null;
+
+		var previous = UserSettings.Settings;
+		try
+		{
+			await UserSettings.SaveAsync(new UserSettings { DatabasePath = databasePath });
+			// Create/seed the database at the new location; if that fails, put the old settings back
+			// so the app still starts next time.
+			await DatabaseInitializer.InitializeAsync(Services);
+		}
+		catch (Exception ex)
+		{
+			await UserSettings.SaveAsync(previous);
+			error = $"Could not open the database: {ex.Message}";
+			saving = false;
+			return;
+		}
+
+		// Existing circuits still hold a DbContext on the old file; a full reload starts a fresh one.
+		Navigation.NavigateTo("/", forceLoad: true);
+	}
+}

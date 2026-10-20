@@ -24,12 +24,5 @@ public class DbPart {
 
 	/// <summary>True for piped parts (liquids/gases); these are scaled by <see cref="Game.FluidDivisor"/>.</summary>
 	[NotMapped]
-	public bool IsFluid => SFTracker.Constants.FluidParts.IsFluid(Name);
-
-	// Navigation properties
-	[InverseProperty(nameof(FactoryInput.Part))]
-	public ICollection<FactoryInput> FactoryInputs { get; set; } = [];
-
-	[InverseProperty(nameof(FactoryOutput.Part))]
-	public ICollection<FactoryOutput> FactoryOutputs { get; set; } = [];
+	public bool IsFluid => Constants.FluidParts.IsFluid(Name);
 }

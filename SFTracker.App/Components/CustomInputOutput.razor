@@ -94,8 +94,8 @@
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
-	[Parameter] public List<DbPart> AllParts { get; set; } = new();
-	[Parameter] public EventCallback OnInputOutputChanged { get; set; }
+	[Parameter] public List<DbPart> AllParts { get; set; } = [];
+	[Parameter] public EventCallback OnChanged { get; set; }
 
 	// Edit mode fields for inputs
 	private int? editingInputId = null;
@@ -127,11 +127,8 @@
 	{
 		if (editingInputPart != null && editingInputAmount > 0)
 		{
-			// Remove the old input
-			await FactoryService.RemoveFactoryInputAsync(inputId);
-			// Add the new input with updated values
-			await FactoryService.AddFactoryInputAsync(SelectedFactory.Id, editingInputPart.Id, editingInputAmount);
-			await OnInputOutputChanged.InvokeAsync();
+			await FactoryService.UpdateFactoryInputAsync(inputId, editingInputPart.Id, editingInputAmount);
+			await OnChanged.InvokeAsync();
 			CancelInputEdit();
 		}
 	}
@@ -140,11 +137,8 @@
 	{
 		if (editingOutputPart != null && editingOutputAmount > 0)
 		{
-			// Remove the old output
-			await FactoryService.RemoveFactoryOutputAsync(outputId);
-			// Add the new output with updated values
-			await FactoryService.AddFactoryOutputAsync(SelectedFactory.Id, editingOutputPart.Id, editingOutputAmount);
-			await OnInputOutputChanged.InvokeAsync();
+			await FactoryService.UpdateFactoryOutputAsync(outputId, editingOutputPart.Id, editingOutputAmount);
+			await OnChanged.InvokeAsync();
 			CancelOutputEdit();
 		}
 	}
@@ -166,23 +160,18 @@
 	private async Task RemoveInput(int inputId)
 	{
 		await FactoryService.RemoveFactoryInputAsync(inputId);
-		await OnInputOutputChanged.InvokeAsync();
+		await OnChanged.InvokeAsync();
 	}
 
 	private async Task RemoveOutput(int outputId)
 	{
 		await FactoryService.RemoveFactoryOutputAsync(outputId);
-		await OnInputOutputChanged.InvokeAsync();
+		await OnChanged.InvokeAsync();
 	}
 
 	private void CancelAllEdits()
 	{
 		CancelInputEdit();
 		CancelOutputEdit();
-	}
-
-	public void CancelEdits()
-	{
-		CancelAllEdits();
 	}
 }

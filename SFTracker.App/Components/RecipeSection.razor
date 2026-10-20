@@ -1,3 +1,4 @@
+@using static SFTracker.Constants.DisplayConstants
 @inject FactoryService FactoryService
 @implements IDisposable
 
@@ -24,19 +25,19 @@
 				<span>@factoryRecipe.Recipe.Name</span>
 				<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
 					title="Machines needed - click to edit"
-					@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
+					@onclick="() => ShowEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
 			</div>
 			<div class="row g-0">
 				<!-- Recipe Inputs -->
 				<div class="col-md-6">
 					@foreach (var input in factoryRecipe.Recipe.Inputs)
 					{
-						var isEnabled = FactoryService.IsRecipeInputEnabled(factoryRecipe, input.Id);
+						var isEnabled = factoryRecipe.IsInputEnabled(input.Id);
 						var producers = GetRecipesProducing(input.PartId);
 						<div class="d-flex align-items-center mb-1">
 							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
 								title="Click to edit this rate"
-								@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, input.Id, null)">
+								@onclick="() => ShowEditRecipeModal(factoryRecipe, input.Id, null)">
 								<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">@input.Part.Name</span>
@@ -70,12 +71,12 @@
 				<div class="col-md-6">
 					@foreach (var output in factoryRecipe.Recipe.Outputs)
 					{
-						var isEnabled = FactoryService.IsRecipeOutputEnabled(factoryRecipe, output.Id);
+						var isEnabled = factoryRecipe.IsOutputEnabled(output.Id);
 						var consumers = GetRecipesConsuming(output.PartId);
 						<div class="d-flex align-items-center mb-1">
 							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
 								title="Click to edit this rate"
-								@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe, null, output.Id)">
+								@onclick="() => ShowEditRecipeModal(factoryRecipe, null, output.Id)">
 								<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">@output.Part.Name</span>
@@ -113,7 +114,7 @@
 		}
 		<div class="ms-3 flex-shrink-0 btn-group btn-group-sm" role="group" aria-label="Edit, match demand or delete recipe">
 			<button class="btn btn-outline-primary" title="Edit recipe"
-				@onclick="() => ShowAdvancedEditRecipeModal(factoryRecipe)">
+				@onclick="() => ShowEditRecipeModal(factoryRecipe)">
 				<i class="bi bi-pencil"></i>
 			</button>
 			<button class="btn btn-outline-info" disabled="@(demandMultiplier == null)"
@@ -136,17 +137,11 @@
 	<RecipeHoverCard Recipe="tipRecipe" HighlightPartId="tipPartId" Top="tipTop" Left="tipLeft" FluidDivisor="FluidDivisor" />
 }
 
-@* Advanced Recipe Modals *@
-<RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
-	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
-	InitialIsSlooped="editModalInitialIsSlooped" FluidDivisor="@FluidDivisor"
-	HighlightInputId="editModalHighlightInputId" HighlightOutputId="editModalHighlightOutputId" HighlightMultiplier="editModalHighlightMultiplier"
-	FactoryRecipeId="editModalFactoryRecipeId" OnSave="OnAdvancedRecipeEdit" />
+<RecipeEditorModal @ref="editRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnRecipeEdited" />
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
-	[Parameter] public List<DbPart> AllParts { get; set; } = new();
-	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = new();
+	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = [];
 	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
 
@@ -154,17 +149,7 @@
 	private List<FactoryRecipe> OrderedRecipes =>
 		SelectedFactory.Recipes.OrderBy(r => r.Sorting).ThenBy(r => r.Id).ToList();
 
-	// Recipe modals
-	private RecipeEditorModal? advancedEditRecipeModal;
-
-	// Edit modal state
-	private DbRecipe? editModalSelectedRecipe;
-	private double? editModalInitialMultiplier;
-	private bool? editModalInitialIsSlooped;
-	private int? editModalFactoryRecipeId;
-	private int? editModalHighlightInputId;
-	private int? editModalHighlightOutputId;
-	private bool editModalHighlightMultiplier;
+	private RecipeEditorModal editRecipeModal = default!;
 
 	// Recipe hover card state (for the per-ingredient "+" dropdowns)
 	private DbRecipe? tipRecipe;
@@ -210,12 +195,12 @@
 		deleteConfirmationTimer?.Dispose();
 	}
 
-	private void HandleRemoveRecipeClick(int factoryRecipeId)
+	private async Task HandleRemoveRecipeClick(int factoryRecipeId)
 	{
 		if (pendingDeleteRecipeId == factoryRecipeId)
 		{
 			// Second click - confirm deletion
-			_ = RemoveRecipe(factoryRecipeId);
+			await RemoveRecipe(factoryRecipeId);
 		}
 		else
 		{
@@ -259,74 +244,33 @@
 		await OnRecipeChanged.InvokeAsync();
 	}
 
-	private async void ShowAdvancedEditRecipeModal(FactoryRecipe factoryRecipe, int? highlightInputId = null, int? highlightOutputId = null, bool highlightMultiplier = false)
-	{
-		if (advancedEditRecipeModal != null)
-		{
-			// Set the state properties for editing mode
-			editModalSelectedRecipe = factoryRecipe.Recipe;
-			editModalInitialMultiplier = factoryRecipe.Multiplier;
-			editModalInitialIsSlooped = factoryRecipe.IsSlooped;
-			editModalFactoryRecipeId = factoryRecipe.Id;
-			editModalHighlightInputId = highlightInputId;
-			editModalHighlightOutputId = highlightOutputId;
-			editModalHighlightMultiplier = highlightMultiplier;
-			StateHasChanged(); // Trigger re-render to pass new parameters
-			await advancedEditRecipeModal.ShowModal();
-		}
-	}
+	private Task ShowEditRecipeModal(FactoryRecipe factoryRecipe, int? highlightInputId = null, int? highlightOutputId = null, bool highlightMultiplier = false) =>
+		editRecipeModal.ShowEditAsync(factoryRecipe, highlightInputId, highlightOutputId, highlightMultiplier);
 
-	private async Task OnAdvancedRecipeEdit((int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId) args)
+	private async Task OnRecipeEdited((int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId) args)
 	{
-		if (SelectedFactory != null && args.factoryRecipeId.HasValue)
+		if (args.factoryRecipeId is int factoryRecipeId)
 		{
-			await FactoryService.UpdateFactoryRecipeAsync(args.factoryRecipeId.Value, args.recipeId, args.multiplier, args.isSlooped);
+			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, args.multiplier, args.isSlooped, args.recipeId);
 			await OnRecipeChanged.InvokeAsync();
 		}
 	}
 
-	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input)
+	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input) =>
+		RateText(input.GetQuantityPerMinute(1, FluidDivisor), factoryRecipe.Multiplier, slooped: false,
+			input.GetQuantityPerMinute(factoryRecipe, FluidDivisor));
+
+	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output) =>
+		RateText(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor), factoryRecipe.Multiplier, factoryRecipe.IsSlooped,
+			output.GetQuantityPerMinute(factoryRecipe, FluidDivisor));
+
+	// "total/min" for a plain 1x recipe, otherwise "perMachine x multiplier [x 2 (slooped)] = total/min".
+	private static string RateText(double perMachine, double multiplier, bool slooped, double total)
 	{
-		var baseNumber = input.GetQuantityPerMinute(1, FluidDivisor);
-		var totalNumber = input.GetQuantityPerMinute(factoryRecipe.Multiplier, FluidDivisor);
-
-		var formattedBaseNumber = FormatNumber(baseNumber);
-		var formattedTotalNumber = FormatNumber(totalNumber);
-
-		if (factoryRecipe.Multiplier == 1.0)
-		{
-			return $"{formattedTotalNumber}/min";
-		}
-		else
-		{
-			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-		}
-	}
-
-	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output)
-	{
-		var baseNumber = output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor);
-		var totalNumber = output.GetQuantityPerMinute(factoryRecipe.Multiplier, factoryRecipe.IsSlooped, FluidDivisor);
-
-		var formattedBaseNumber = FormatNumber(baseNumber);
-		var formattedTotalNumber = FormatNumber(totalNumber);
-
-		if (factoryRecipe.Multiplier == 1.0 && !factoryRecipe.IsSlooped)
-		{
-			return $"{formattedTotalNumber}/min";
-		}
-		else if (factoryRecipe.IsSlooped && factoryRecipe.Multiplier == 1.0)
-		{
-			return $"{formattedBaseNumber} x 2 (slooped) = {formattedTotalNumber}/min";
-		}
-		else if (factoryRecipe.IsSlooped)
-		{
-			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} x 2 (slooped) = {formattedTotalNumber}/min";
-		}
-		else
-		{
-			return $"{formattedBaseNumber} x {FormatNumber(factoryRecipe.Multiplier)} = {formattedTotalNumber}/min";
-		}
+		var factors = (multiplier != 1.0 ? $" x {FormatNumber(multiplier)}" : "") + (slooped ? " x 2 (slooped)" : "");
+		return factors.Length == 0
+			? $"{FormatNumber(total)}/min"
+			: $"{FormatNumber(perMachine)}{factors} = {FormatNumber(total)}/min";
 	}
 
 	/// <summary>
@@ -357,7 +301,7 @@
 	private DbRecipeOutput? GetMainEnabledOutput(FactoryRecipe factoryRecipe) =>
 		factoryRecipe.Recipe.Outputs
 			.OrderBy(o => o.Id)
-			.FirstOrDefault(o => FactoryService.IsRecipeOutputEnabled(factoryRecipe, o.Id));
+			.FirstOrDefault(o => factoryRecipe.IsOutputEnabled(o.Id));
 
 	// Demand for partId in the selected factory that is not met by anything other than the excluded recipe.
 	private double GetUncoveredDemand(FactoryRecipe? excludedRecipe, int partId)
@@ -368,14 +312,14 @@
 		foreach (var other in SelectedFactory.Recipes)
 		{
 			demand += other.Recipe.Inputs
-				.Where(ri => ri.PartId == partId && FactoryService.IsRecipeInputEnabled(other, ri.Id))
+				.Where(ri => ri.PartId == partId && other.IsInputEnabled(ri.Id))
 				.Sum(ri => ri.GetQuantityPerMinute(other, FluidDivisor));
 
 			if (excludedRecipe != null && other.Id == excludedRecipe.Id)
 				continue;
 
 			supply += other.Recipe.Outputs
-				.Where(ro => ro.PartId == partId && FactoryService.IsRecipeOutputEnabled(other, ro.Id))
+				.Where(ro => ro.PartId == partId && other.IsOutputEnabled(ro.Id))
 				.Sum(ro => ro.GetQuantityPerMinute(other, FluidDivisor));
 		}
 
@@ -388,14 +332,6 @@
 	private List<DbRecipe> GetRecipesConsuming(int partId) =>
 		AllRecipes.Where(r => r.Inputs.Any(i => i.PartId == partId)).OrderBy(r => r.Name).ToList();
 
-	/// <summary>
-	/// Add a recipe picked from an ingredient's dropdown. As a producer it is sized to cover the
-	/// factory's current shortfall of the part; as a consumer it is sized to eat the current surplus.
-	/// Falls back to 1x when there is no gap to fill.
-	/// New recipes go to the bottom of the list unless <paramref name="insertAbove"/> is given, in
-	/// which case the new recipe is placed directly above it (used for consumers, so they sit next
-	/// to the recipe whose output they eat).
-	/// </summary>
 	private void ShowRecipeTip(DbRecipe recipe, int partId, MouseEventArgs e)
 	{
 		tipRecipe = recipe;
@@ -411,6 +347,14 @@
 		tipRecipe = null;
 	}
 
+	/// <summary>
+	/// Add a recipe picked from an ingredient's dropdown. As a producer it is sized to cover the
+	/// factory's current shortfall of the part; as a consumer it is sized to eat the current surplus.
+	/// Falls back to 1x when there is no gap to fill.
+	/// New recipes go to the bottom of the list unless <paramref name="insertAbove"/> is given, in
+	/// which case the new recipe is placed directly above it (used for consumers, so they sit next
+	/// to the recipe whose output they eat).
+	/// </summary>
 	private async Task AddRecipeForPart(DbRecipe recipe, int partId, bool asProducer, FactoryRecipe? insertAbove = null)
 	{
 		HideRecipeTip();
@@ -465,11 +409,5 @@
 
 		await FactoryService.UpdateFactoryRecipeAsync(factoryRecipe.Id, demandMultiplier.Value, factoryRecipe.IsSlooped);
 		await OnRecipeChanged.InvokeAsync();
-	}
-
-	private string FormatNumber(double value)
-	{
-		// Round to 4 decimal places and remove trailing zeros
-		return Math.Round(value, 4).ToString("0.####");
 	}
 }

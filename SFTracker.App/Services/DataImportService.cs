@@ -1,129 +1,92 @@
-using System.Text;
+using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using SFTracker.Data;
 using SFTracker.Models;
-using SFTracker.Services.Data;
 
 namespace SFTracker.Services;
 
+/// <summary>
+/// Seeds the Parts/Recipes tables from game_data.json. Idempotent: parts and recipes that already exist
+/// (by name) are left alone, so entries added to game_data.json land on the next start.
+/// </summary>
 public class DataImportService {
 	private readonly SFTrackerDbContext m_context;
 	private readonly GameInfoService m_gameInfoService;
+	private readonly ILogger<DataImportService> m_logger;
 
-	public DataImportService(SFTrackerDbContext context, GameInfoService gameInfoService) {
+	public DataImportService(SFTrackerDbContext context, GameInfoService gameInfoService, ILogger<DataImportService> logger) {
 		m_context = context;
 		m_gameInfoService = gameInfoService;
+		m_logger = logger;
 	}
 
 	public async Task ImportPartsAsync() {
-		// Check if parts are already imported
-		if (m_context.Parts.Any()) {
-			Console.WriteLine("Parts already imported, skipping...");
+		var existing = await m_context.Parts.Select(p => p.Name).ToHashSetAsync();
+		var newParts = m_gameInfoService.GameData.Parts
+			.Where(p => !existing.Contains(p.Name))
+			.Select(p => new DbPart {
+				Name = p.Name,
+				Tier = p.Tier,
+				SinkPoints = p.SinkPoints,
+				ImageUrl = p.ImageUrl
+			})
+			.ToList();
+		if (newParts.Count == 0) {
 			return;
 		}
 
-		Console.WriteLine("Importing parts from game data...");
-
-		var gameData = m_gameInfoService.GameData;
-
-		foreach (var part in gameData.Parts) {
-			var dbPart = new DbPart {
-				Name = part.Name,
-				Tier = part.Tier,
-				SinkPoints = part.SinkPoints,
-				ImageUrl = part.ImageUrl
-			};
-
-			m_context.Parts.Add(dbPart);
-		}
-
+		m_context.Parts.AddRange(newParts);
 		await m_context.SaveChangesAsync();
-		Console.WriteLine($"Imported {gameData.Parts.Count} parts successfully.");
+		m_logger.LogInformation("Imported {Count} parts from game data.", newParts.Count);
 	}
 
 	public async Task ImportRecipesAsync() {
-		if (m_context.Recipes.Any()) {
-			Console.WriteLine("Recipes already imported, skipping...");
+		var existing = await m_context.Recipes.Select(r => r.Name).ToHashSetAsync();
+		var partIdsByName = await m_context.Parts.ToDictionaryAsync(p => p.Name, p => p.Id);
+
+		var newRecipes = new List<DbRecipe>();
+		foreach (var recipe in m_gameInfoService.GameData.Recipes.Where(r => !existing.Contains(r.Name))) {
+			var dbRecipe = new DbRecipe {
+				Name = recipe.Name,
+				Tier = recipe.Tier ?? string.Empty,
+				TimeSeconds = ParseNumber(recipe.BatchTime),
+				IsAlternate = recipe.Alternate ?? false
+			};
+			foreach (var part in recipe.Parts) {
+				if (!partIdsByName.TryGetValue(part.Part, out var partId)) {
+					throw new InvalidOperationException($"Recipe '{recipe.Name}' references unknown part '{part.Part}'.");
+				}
+				// Negative amounts are inputs, positive amounts are outputs.
+				var quantity = ParseNumber(part.Amount);
+				if (quantity < 0) {
+					dbRecipe.Inputs.Add(new DbRecipeInput { PartId = partId, Quantity = -quantity });
+				} else {
+					dbRecipe.Outputs.Add(new DbRecipeOutput { PartId = partId, Quantity = quantity });
+				}
+			}
+			newRecipes.Add(dbRecipe);
+		}
+		if (newRecipes.Count == 0) {
 			return;
 		}
 
-		// Ensure there are parts in the database
-		if (!m_context.Parts.Any()) {
-			throw new InvalidOperationException("No parts found in database. Please import parts before importing recipes.");
-		}
-
-		var transaction = await m_context.Database.BeginTransactionAsync();
-		try {
-			Console.WriteLine("Importing recipes from game data...");
-			var gameData = m_gameInfoService.GameData;
-			foreach (var recipe in gameData.Recipes) {
-				if (recipe.BatchTime.Contains('/')) {
-					Console.WriteLine($"Skipping recipe with fractional batch time for now: {recipe.Name} with BatchTime {recipe.BatchTime}");
-					continue;
-				}
-
-				var dbRecipe = new DbRecipe {
-					Name = recipe.Name,
-					Tier = recipe.Tier ?? string.Empty,
-					TimeSeconds = double.Parse(recipe.BatchTime),
-					IsAlternate = recipe.Alternate ?? false
-				};
-
-				// Add the recipe to context first to get the ID
-				m_context.Recipes.Add(dbRecipe);
-				await m_context.SaveChangesAsync(); // Save to get the RecipeId
-
-				foreach (var part in recipe.Parts) {
-					var partName = part.Part;
-					var dbPart = m_context.Parts.FirstOrDefault(p => p.Name == partName);
-					if (dbPart == null) {
-						throw new InvalidOperationException($"Part '{partName}' not found in database. Ensure all parts are imported before importing recipes.");
-					}
-					var quantity = ParseFractions(part.Amount);
-					var isInput = quantity < 0;
-
-					if (isInput) {
-						var recipeInput = new DbRecipeInput {
-							PartId = dbPart.Id,
-							Quantity = Math.Abs(quantity) // Store as positive quantity
-						};
-						dbRecipe.Inputs.Add(recipeInput);
-					} else {
-						var recipeOutput = new DbRecipeOutput {
-							PartId = dbPart.Id,
-							Quantity = quantity
-						};
-						dbRecipe.Outputs.Add(recipeOutput);
-					}
-
-				}
-			}
-
-			await m_context.SaveChangesAsync();
-		} catch (Exception ex) {
-			await transaction.RollbackAsync();
-			Console.WriteLine($"Error importing recipes: {ex.Message}");
-			throw;
-		}
-
-		await transaction.CommitAsync();
-		Console.WriteLine("Recipes imported successfully.");
+		m_context.Recipes.AddRange(newRecipes);
+		await m_context.SaveChangesAsync();
+		m_logger.LogInformation("Imported {Count} recipes from game data.", newRecipes.Count);
 	}
 
-	private double ParseFractions(string batchTime) {
-		// Can be in 1/2 or 1/4 etc format, usually just a pure number
-		if (batchTime.Contains('/')) {
-			Console.WriteLine($"Parsing fractional batch time: {batchTime}");
-			var parts = batchTime.Split('/');
-			if (parts.Length == 2 && double.TryParse(parts[0], out var numerator) && double.TryParse(parts[1], out var denominator) && denominator != 0) {
-				var parsedValue = numerator / denominator;
-				Console.WriteLine($"Parsed {batchTime} as {parsedValue}");
-				return parsedValue;
-			}
-			throw new FormatException($"Invalid batch time format: {batchTime}");
-		} else if (double.TryParse(batchTime, out var result)) {
-			return result;
-		} else {
-			throw new FormatException($"Invalid batch time format: {batchTime}");
+	/// <summary>Parses a game-data number, which is either plain ("30", "-1") or a fraction ("12/5", "-9/5").</summary>
+	public static double ParseNumber(string value) {
+		var parts = value.Split('/');
+		if (parts.Length == 1 && TryParse(parts[0], out var number)) {
+			return number;
 		}
+		if (parts.Length == 2 && TryParse(parts[0], out var numerator) && TryParse(parts[1], out var denominator) && denominator != 0) {
+			return numerator / denominator;
+		}
+		throw new FormatException($"Invalid number in game data: '{value}'");
+
+		static bool TryParse(string s, out double result) =>
+			double.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out result);
 	}
 }

@@ -42,9 +42,9 @@ if (!app.Environment.IsDevelopment()) {
 	app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
-// Initialize game info service
+// Load the game reference data (parts, recipes, machines)
 var gameInfoService = app.Services.GetRequiredService<GameInfoService>();
-await gameInfoService.InitializeAsync();
+await gameInfoService.InitializeAsync(Path.Combine(app.Environment.ContentRootPath, "game_data.json"));
 
 // Create/seed the database (see DatabaseInitializer; also re-run when the database path changes)
 await DatabaseInitializer.InitializeAsync(app.Services);

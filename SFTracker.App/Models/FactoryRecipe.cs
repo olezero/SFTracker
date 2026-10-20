@@ -15,7 +15,7 @@ namespace SFTracker.Models;
 [Index(nameof(FactoryId))]
 [Index(nameof(IsActive))]
 public class FactoryRecipe {
-	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+	[Key]
 	public int Id { get; set; }
 
 	public int FactoryId { get; set; }
@@ -35,7 +35,15 @@ public class FactoryRecipe {
 	[ForeignKey(nameof(RecipeId))]
 	public DbRecipe Recipe { get; set; } = null!;
 
-	// Navigation properties for overrides
-	public ICollection<FactoryRecipeInputOverride> InputOverrides { get; set; } = new List<FactoryRecipeInputOverride>();
-	public ICollection<FactoryRecipeOutputOverride> OutputOverrides { get; set; } = new List<FactoryRecipeOutputOverride>();
+	// Per-recipe toggles for whether an input/output counts toward the balance.
+	public ICollection<FactoryRecipeInputOverride> InputOverrides { get; set; } = [];
+	public ICollection<FactoryRecipeOutputOverride> OutputOverrides { get; set; } = [];
+
+	/// <summary>Whether a recipe input counts toward the balance. No override = enabled.</summary>
+	public bool IsInputEnabled(int recipeInputId) =>
+		InputOverrides.FirstOrDefault(o => o.RecipeInputId == recipeInputId)?.IsEnabled ?? true;
+
+	/// <summary>Whether a recipe output counts toward the balance. No override = enabled.</summary>
+	public bool IsOutputEnabled(int recipeOutputId) =>
+		OutputOverrides.FirstOrDefault(o => o.RecipeOutputId == recipeOutputId)?.IsEnabled ?? true;
 }

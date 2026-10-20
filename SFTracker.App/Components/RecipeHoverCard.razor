@@ -1,5 +1,4 @@
-@using SFTracker.Models
-
+@using static SFTracker.Constants.DisplayConstants
 @* Fixed-position hover card showing a recipe's inputs/outputs per machine, with icons.
    Positioned at the hovered element's top-left corner (viewport coordinates) and shifted
    to its left via .recipe-tip in app.css. *@
@@ -38,6 +37,4 @@
 	[Parameter] public double Top { get; set; }
 	[Parameter] public double Left { get; set; }
 	[Parameter] public int FluidDivisor { get; set; } = 1;
-
-	private static string FormatNumber(double value) => Math.Round(value, 4).ToString("0.####");
 }

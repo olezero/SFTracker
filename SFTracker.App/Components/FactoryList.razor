@@ -15,8 +15,7 @@
 			<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
 				<ItemTemplate>
 					<div class="d-flex w-100 justify-content-between sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
-						@onclick="() => SelectFactory(factory)" data-factory-id="@factory.Id"
-						data-selected="@(SelectedFactory?.Id == factory.Id)">
+						@onclick="() => SelectFactory(factory)">
 						<div>
 							<h6 class="mb-1">@factory.Name</h6>
 							@if (factory.Network != null)
@@ -92,9 +91,9 @@
 </Modal>
 
 @code {
-	[Parameter] public List<Factory> Factories { get; set; } = new();
+	[Parameter] public List<Factory> Factories { get; set; } = [];
 	[Parameter] public Factory? SelectedFactory { get; set; }
-	[Parameter] public List<Network> Networks { get; set; } = new();
+	[Parameter] public List<Network> Networks { get; set; } = [];
 	[Parameter] public EventCallback<Factory?> SelectedFactoryChanged { get; set; }
 	[Parameter] public EventCallback OnFactoryListChanged { get; set; }
 	[Parameter] public EventCallback<(Factory factory, string operation)> OnFactoryOperation { get; set; }
@@ -115,20 +114,20 @@
 		await SelectedFactoryChanged.InvokeAsync(factory);
 	}
 
-	private void ShowCreateFactoryModal()
+	private async Task ShowCreateFactoryModal()
 	{
 		newFactoryName = "";
-		createFactoryModal.ShowAsync();
+		await createFactoryModal.ShowAsync();
 	}
 
-	public void ShowUpdateFactoryModal()
+	public async Task ShowUpdateFactoryModal()
 	{
 		if (SelectedFactory != null)
 		{
 			newFactoryName = SelectedFactory.Name;
 			editNetworkChoice = SelectedFactory.NetworkId?.ToString() ?? "";
 			newNetworkName = "";
-			updateFactoryModal.ShowAsync();
+			await updateFactoryModal.ShowAsync();
 		}
 	}
 
@@ -188,12 +187,7 @@
 			networkId = existingId;
 		}
 
-		if (networkId != SelectedFactory.NetworkId)
-		{
-			await FactoryService.SetFactoryNetworkAsync(SelectedFactory.Id, networkId);
-		}
-
-		SelectedFactory.Name = newFactoryName;
+		await FactoryService.UpdateFactoryAsync(SelectedFactory.Id, newFactoryName, networkId);
 		await OnFactoryOperation.InvokeAsync((SelectedFactory, "update"));
 		await HideUpdateFactoryModal();
 	}

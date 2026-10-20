@@ -81,8 +81,10 @@ public class GameService {
 	/// Recipes/inputs/outputs cascade from Factories at the DB level.
 	/// </summary>
 	public async Task DeleteGameAsync(int id) {
+		await using var transaction = await m_context.Database.BeginTransactionAsync();
 		await m_context.Factories.Where(f => f.GameId == id).ExecuteDeleteAsync();
 		await m_context.Networks.Where(n => n.GameId == id).ExecuteDeleteAsync();
 		await m_context.Games.Where(g => g.Id == id).ExecuteDeleteAsync();
+		await transaction.CommitAsync();
 	}
 }

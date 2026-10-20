@@ -4,6 +4,9 @@ using SFTracker.Models;
 
 namespace SFTracker.Services;
 
+/// <summary>
+/// Data access for factories and everything inside them (manual inputs/outputs, recipes, overrides).
+/// </summary>
 public class FactoryService {
 	private readonly SFTrackerDbContext m_context;
 
@@ -11,85 +14,69 @@ public class FactoryService {
 		m_context = context;
 	}
 
-	public async Task<List<Factory>> GetAllFactoriesAsync(int gameId) {
-		return await m_context.Factories
-			.Where(f => f.GameId == gameId)
+	/// <summary>
+	/// Factories with everything the UI and the balance need: network, manual inputs/outputs (with parts)
+	/// and active recipes with their inputs/outputs (with parts) and overrides.
+	/// </summary>
+	private IQueryable<Factory> FactoriesWithDetails() =>
+		m_context.Factories
 			.Include(f => f.Network)
-			.Include(f => f.Inputs)
-				.ThenInclude(i => i.Part)
-				.OrderBy(i => i.Name)
-			.Include(f => f.Outputs)
-				.ThenInclude(o => o.Part)
-				.OrderBy(i => i.Name)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.Recipe)
-				.ThenInclude(r => r.Inputs)
-				.ThenInclude(ri => ri.Part)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.Recipe)
-				.ThenInclude(r => r.Outputs)
-				.ThenInclude(ro => ro.Part)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.InputOverrides)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.OutputOverrides)
-			.OrderBy(f => f.Sorting)
-			.AsSplitQuery()
+			.Include(f => f.Inputs).ThenInclude(i => i.Part)
+			.Include(f => f.Outputs).ThenInclude(o => o.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.Recipe).ThenInclude(r => r.Inputs).ThenInclude(ri => ri.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.Recipe).ThenInclude(r => r.Outputs).ThenInclude(ro => ro.Part)
+			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.InputOverrides)
+			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.OutputOverrides)
+			.AsSplitQuery();
+
+	public async Task<List<Factory>> GetAllFactoriesAsync(int gameId) {
+		return await FactoriesWithDetails()
+			.Where(f => f.GameId == gameId)
+			.OrderBy(f => f.Sorting).ThenBy(f => f.Id)
 			.ToListAsync();
 	}
 
 	public async Task<Factory?> GetFactoryByIdAsync(int id) {
-		return await m_context.Factories
-			.Include(f => f.Network)
-			.Include(f => f.Inputs)
-				.ThenInclude(i => i.Part)
-				.OrderBy(i => i.Name)
-			.Include(f => f.Outputs)
-				.ThenInclude(o => o.Part)
-				.OrderBy(o => o.Name)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.Recipe)
-				.ThenInclude(r => r.Inputs)
-				.ThenInclude(ri => ri.Part)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.Recipe)
-				.ThenInclude(r => r.Outputs)
-				.ThenInclude(ro => ro.Part)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.InputOverrides)
-			.Include(f => f.Recipes.Where(r => r.IsActive))
-				.ThenInclude(r => r.OutputOverrides)
-			.AsSplitQuery()
-			.FirstOrDefaultAsync(f => f.Id == id);
+		return await FactoriesWithDetails().FirstOrDefaultAsync(f => f.Id == id);
 	}
 
 	public async Task<Factory> CreateFactoryAsync(string name, int gameId) {
-		var factory = new Factory { Name = name, GameId = gameId };
+		// Place new factories last in the manual ordering.
+		var maxSorting = await m_context.Factories
+			.Where(f => f.GameId == gameId)
+			.MaxAsync(f => (double?)f.Sorting) ?? -1;
+
+		var factory = new Factory { Name = name.Trim(), GameId = gameId, Sorting = maxSorting + 1 };
 		m_context.Factories.Add(factory);
 		await m_context.SaveChangesAsync();
 		return factory;
 	}
 
 	/// <summary>
-	/// Assigns a factory to a network (or none). Sets both the navigation and the FK so the
-	/// tracked instance stays consistent with what gets saved.
+	/// Renames a factory and assigns it to a network (or none). Sets both the navigation and the FK so
+	/// the tracked instance the UI holds stays consistent with what gets saved.
 	/// </summary>
-	public async Task SetFactoryNetworkAsync(int factoryId, int? networkId) {
+	public async Task UpdateFactoryAsync(int factoryId, string name, int? networkId) {
 		var factory = await m_context.Factories.FindAsync(factoryId);
 		if (factory == null) {
 			return;
 		}
+		factory.Name = name.Trim();
 		factory.Network = networkId.HasValue ? await m_context.Networks.FindAsync(networkId.Value) : null;
 		factory.NetworkId = factory.Network?.Id;
 		factory.UpdatedAt = DateTime.UtcNow;
 		await m_context.SaveChangesAsync();
 	}
 
-	public async Task<Factory> UpdateFactoryAsync(Factory factory) {
-		factory.UpdatedAt = DateTime.UtcNow;
-		m_context.Factories.Update(factory);
+	/// <summary>Persist a full manual ordering of a game's factories (Sorting = position in the list).</summary>
+	public async Task ReorderFactoriesAsync(List<int> orderedFactoryIds) {
+		var factories = await m_context.Factories
+			.Where(f => orderedFactoryIds.Contains(f.Id))
+			.ToListAsync();
+		foreach (var factory in factories) {
+			factory.Sorting = orderedFactoryIds.IndexOf(factory.Id);
+		}
 		await m_context.SaveChangesAsync();
-		return factory;
 	}
 
 	public async Task DeleteFactoryAsync(int id) {
@@ -100,24 +87,34 @@ public class FactoryService {
 		}
 	}
 
+	#region Manual inputs / outputs
+
 	public async Task AddFactoryInputAsync(int factoryId, int partId, double amountPerMinute) {
-		var input = new FactoryInput {
-			FactoryId = factoryId,
-			PartId = partId,
-			AmountPerMinute = amountPerMinute
-		};
-		m_context.FactoryInputs.Add(input);
+		m_context.FactoryInputs.Add(new FactoryInput { FactoryId = factoryId, PartId = partId, AmountPerMinute = amountPerMinute });
 		await m_context.SaveChangesAsync();
 	}
 
 	public async Task AddFactoryOutputAsync(int factoryId, int partId, double amountPerMinute) {
-		var output = new FactoryOutput {
-			FactoryId = factoryId,
-			PartId = partId,
-			AmountPerMinute = amountPerMinute
-		};
-		m_context.FactoryOutputs.Add(output);
+		m_context.FactoryOutputs.Add(new FactoryOutput { FactoryId = factoryId, PartId = partId, AmountPerMinute = amountPerMinute });
 		await m_context.SaveChangesAsync();
+	}
+
+	public async Task UpdateFactoryInputAsync(int inputId, int partId, double amountPerMinute) {
+		var input = await m_context.FactoryInputs.FindAsync(inputId);
+		if (input != null) {
+			input.PartId = partId;
+			input.AmountPerMinute = amountPerMinute;
+			await m_context.SaveChangesAsync();
+		}
+	}
+
+	public async Task UpdateFactoryOutputAsync(int outputId, int partId, double amountPerMinute) {
+		var output = await m_context.FactoryOutputs.FindAsync(outputId);
+		if (output != null) {
+			output.PartId = partId;
+			output.AmountPerMinute = amountPerMinute;
+			await m_context.SaveChangesAsync();
+		}
 	}
 
 	public async Task RemoveFactoryInputAsync(int inputId) {
@@ -136,9 +133,12 @@ public class FactoryService {
 		}
 	}
 
-	/// <returns>The newly created factory recipe.</returns>
+	#endregion
+
+	#region Recipes
+
+	/// <returns>The newly created factory recipe (placed last in the manual ordering).</returns>
 	public async Task<FactoryRecipe> AddFactoryRecipeAsync(int factoryId, int recipeId, double multiplier, bool isSlooped = false) {
-		// Place new recipes last in the manual ordering.
 		var maxSorting = await m_context.FactoryRecipes
 			.Where(r => r.FactoryId == factoryId && r.IsActive)
 			.MaxAsync(r => (double?)r.Sorting) ?? -1;
@@ -156,25 +156,23 @@ public class FactoryService {
 		return factoryRecipe;
 	}
 
-	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier, bool isSlooped = false) {
+	/// <param name="recipeId">
+	/// Switch the row to a different recipe; null keeps the current one. Switching drops the row's
+	/// input/output overrides, since they refer to the old recipe's inputs/outputs.
+	/// </param>
+	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, double multiplier, bool isSlooped, int? recipeId = null) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
-		if (factoryRecipe != null) {
-			factoryRecipe.Multiplier = multiplier;
-			factoryRecipe.IsSlooped = isSlooped;
-			m_context.FactoryRecipes.Update(factoryRecipe);
-			await m_context.SaveChangesAsync();
+		if (factoryRecipe == null) {
+			return;
 		}
-	}
-
-	public async Task UpdateFactoryRecipeAsync(int factoryRecipeId, int recipeId, double multiplier, bool isSlooped = false) {
-		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
-		if (factoryRecipe != null) {
-			factoryRecipe.RecipeId = recipeId;
-			factoryRecipe.Multiplier = multiplier;
-			factoryRecipe.IsSlooped = isSlooped;
-			m_context.FactoryRecipes.Update(factoryRecipe);
-			await m_context.SaveChangesAsync();
+		if (recipeId.HasValue && recipeId.Value != factoryRecipe.RecipeId) {
+			factoryRecipe.RecipeId = recipeId.Value;
+			await m_context.FactoryRecipeInputOverrides.Where(o => o.FactoryRecipeId == factoryRecipeId).ExecuteDeleteAsync();
+			await m_context.FactoryRecipeOutputOverrides.Where(o => o.FactoryRecipeId == factoryRecipeId).ExecuteDeleteAsync();
 		}
+		factoryRecipe.Multiplier = multiplier;
+		factoryRecipe.IsSlooped = isSlooped;
+		await m_context.SaveChangesAsync();
 	}
 
 	/// <summary>
@@ -185,14 +183,9 @@ public class FactoryService {
 		var recipes = await m_context.FactoryRecipes
 			.Where(r => orderedFactoryRecipeIds.Contains(r.Id))
 			.ToListAsync();
-
-		for (int i = 0; i < orderedFactoryRecipeIds.Count; i++) {
-			var recipe = recipes.FirstOrDefault(r => r.Id == orderedFactoryRecipeIds[i]);
-			if (recipe != null) {
-				recipe.Sorting = i;
-			}
+		foreach (var recipe in recipes) {
+			recipe.Sorting = orderedFactoryRecipeIds.IndexOf(recipe.Id);
 		}
-
 		await m_context.SaveChangesAsync();
 	}
 
@@ -204,6 +197,45 @@ public class FactoryService {
 		}
 	}
 
+	/// <summary>
+	/// Toggle whether a recipe input counts toward the balance. No override = enabled, so the first
+	/// toggle creates a disabled override; later toggles flip it.
+	/// </summary>
+	public async Task ToggleRecipeInputAsync(int factoryRecipeId, int recipeInputId) {
+		var existing = await m_context.FactoryRecipeInputOverrides
+			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeInputId == recipeInputId);
+		if (existing == null) {
+			m_context.FactoryRecipeInputOverrides.Add(new FactoryRecipeInputOverride {
+				FactoryRecipeId = factoryRecipeId,
+				RecipeInputId = recipeInputId,
+				IsEnabled = false
+			});
+		} else {
+			existing.IsEnabled = !existing.IsEnabled;
+		}
+		await m_context.SaveChangesAsync();
+	}
+
+	/// <summary>Output counterpart of <see cref="ToggleRecipeInputAsync"/>.</summary>
+	public async Task ToggleRecipeOutputAsync(int factoryRecipeId, int recipeOutputId) {
+		var existing = await m_context.FactoryRecipeOutputOverrides
+			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeOutputId == recipeOutputId);
+		if (existing == null) {
+			m_context.FactoryRecipeOutputOverrides.Add(new FactoryRecipeOutputOverride {
+				FactoryRecipeId = factoryRecipeId,
+				RecipeOutputId = recipeOutputId,
+				IsEnabled = false
+			});
+		} else {
+			existing.IsEnabled = !existing.IsEnabled;
+		}
+		await m_context.SaveChangesAsync();
+	}
+
+	#endregion
+
+	#region Game reference data
+
 	public async Task<List<DbPart>> GetAllPartsAsync() {
 		return await m_context.Parts
 			.Where(p => !p.Name.Contains("FICSMAS"))
@@ -211,85 +243,15 @@ public class FactoryService {
 			.ToListAsync();
 	}
 
-	// TODO - this should only returnt he recipe, need a seperate method to get recipe details methinks - or we could just cache the result
 	public async Task<List<DbRecipe>> GetAllRecipesAsync() {
 		return await m_context.Recipes
-			.Where(n => !n.Name.Contains("FICSMAS"))
-
-			.Include(r => r.Inputs)
-			.ThenInclude(rp => rp.Part)
-
-			.Include(r => r.Outputs)
-			.ThenInclude(rp => rp.Part)
-
+			.Where(r => !r.Name.Contains("FICSMAS"))
+			.Include(r => r.Inputs).ThenInclude(i => i.Part)
+			.Include(r => r.Outputs).ThenInclude(o => o.Part)
 			.OrderBy(r => r.Name)
 			.AsSplitQuery()
 			.ToListAsync();
 	}
 
-	/// <summary>
-	/// Toggle whether a recipe input is enabled/disabled for balance calculations
-	/// </summary>
-	public async Task ToggleRecipeInputAsync(int factoryRecipeId, int recipeInputId) {
-		var existingOverride = await m_context.FactoryRecipeInputOverrides
-			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeInputId == recipeInputId);
-
-		if (existingOverride == null) {
-			// No override exists, so input is currently enabled - create disabled override
-			var newOverride = new FactoryRecipeInputOverride {
-				FactoryRecipeId = factoryRecipeId,
-				RecipeInputId = recipeInputId,
-				IsEnabled = false
-			};
-			m_context.FactoryRecipeInputOverrides.Add(newOverride);
-		} else {
-			// Override exists, toggle its state
-			existingOverride.IsEnabled = !existingOverride.IsEnabled;
-			m_context.FactoryRecipeInputOverrides.Update(existingOverride);
-		}
-
-		await m_context.SaveChangesAsync();
-	}
-
-	/// <summary>
-	/// Toggle whether a recipe output is enabled/disabled for balance calculations
-	/// </summary>
-	public async Task ToggleRecipeOutputAsync(int factoryRecipeId, int recipeOutputId) {
-		var existingOverride = await m_context.FactoryRecipeOutputOverrides
-			.FirstOrDefaultAsync(o => o.FactoryRecipeId == factoryRecipeId && o.RecipeOutputId == recipeOutputId);
-
-		if (existingOverride == null) {
-			// No override exists, so output is currently enabled - create disabled override
-			var newOverride = new FactoryRecipeOutputOverride {
-				FactoryRecipeId = factoryRecipeId,
-				RecipeOutputId = recipeOutputId,
-				IsEnabled = false
-			};
-			m_context.FactoryRecipeOutputOverrides.Add(newOverride);
-		} else {
-			// Override exists, toggle its state
-			existingOverride.IsEnabled = !existingOverride.IsEnabled;
-			m_context.FactoryRecipeOutputOverrides.Update(existingOverride);
-		}
-
-		await m_context.SaveChangesAsync();
-	}
-
-	/// <summary>
-	/// Check if a recipe input is enabled for balance calculations
-	/// </summary>
-	public bool IsRecipeInputEnabled(FactoryRecipe factoryRecipe, int recipeInputId) {
-		var override_ = factoryRecipe.InputOverrides
-			.FirstOrDefault(o => o.RecipeInputId == recipeInputId);
-		return override_?.IsEnabled ?? true; // Default to enabled if no override exists
-	}
-
-	/// <summary>
-	/// Check if a recipe output is enabled for balance calculations
-	/// </summary>
-	public bool IsRecipeOutputEnabled(FactoryRecipe factoryRecipe, int recipeOutputId) {
-		var override_ = factoryRecipe.OutputOverrides
-			.FirstOrDefault(o => o.RecipeOutputId == recipeOutputId);
-		return override_?.IsEnabled ?? true; // Default to enabled if no override exists
-	}
+	#endregion
 }

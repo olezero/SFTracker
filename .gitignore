@@ -4,3 +4,4 @@ Database/*.db
 Database/*.db-shm
 Database/*.db-wal
 SFTracker.App/usersettings.json
+TestResults

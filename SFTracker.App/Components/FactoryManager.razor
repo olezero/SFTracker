@@ -1,30 +1,6 @@
-@using SFTracker.Models
-@using SFTracker.Services
-@using SFTracker.Constants
 @inject FactoryService FactoryService
 @inject GameService GameService
 @inject NetworkService NetworkService
-@inject IJSRuntime JSRuntime
-
-<style>
-	.sortable-factory-item {
-		cursor: pointer;
-	}
-
-	/* Target the parent list-group-item when the child has the selected class */
-	.list-group-item:has(.sortable-factory-item.selected) {
-		background-color: var(--bs-primary) !important;
-		color: white !important;
-		border-color: var(--bs-primary) !important;
-	}
-
-	/* Alternative approach using data attributes if :has() isn't supported */
-	.list-group-item[data-selected="True"] {
-		background-color: var(--bs-primary) !important;
-		color: white !important;
-		border-color: var(--bs-primary) !important;
-	}
-</style>
 
 <GameSelector Games="@games" SelectedGame="@selectedGame" SelectedGameChanged="@OnGameSelected"
 	OnGameOperation="@OnGameOperation" FluidDivisorChanged="@OnFluidDivisorChanged" />
@@ -39,13 +15,11 @@
 			<ResourceBalance @ref="resourceBalance" GameId="@(selectedGame?.Id ?? 0)" FluidDivisor="@FluidDivisor" />
 		</div>
 	</div>
-	
+
 	<div class="col-lg-9">
 		<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes" FluidDivisor="@FluidDivisor"
 			OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
-			OnRecipeChanged="@LoadDataAndRefreshBalance" OnInputOutputChanged="@LoadDataAndRefreshBalance"
-			OnRecipeAdded="@LoadDataAndRefreshBalance" OnInputAdded="@LoadDataAndRefreshBalance"
-			OnOutputAdded="@LoadDataAndRefreshBalance" />
+			OnChanged="@LoadDataAndRefreshBalance" />
 	</div>
 </div>
 
@@ -53,159 +27,128 @@
 	private ResourceBalance? resourceBalance;
 	private FactoryList? factoryListComponent;
 
-	private List<Game> games = new();
+	private List<Game> games = [];
 	private Game? selectedGame;
 
-	private List<Factory> factories = new();
-	private List<Network> networks = new();
-	private List<DbPart> allParts = new();
-	private List<DbRecipe> allRecipes = new();
+	private List<Factory> factories = [];
+	private List<Network> networks = [];
 	private Factory? selectedFactory;
 
-	protected override async Task OnInitializedAsync()
-	{
+	// Game reference data; loaded once per circuit since it never changes while the app runs.
+	private List<DbPart> allParts = [];
+	private List<DbRecipe> allRecipes = [];
+
+	private int FluidDivisor => selectedGame?.FluidDivisor ?? 1;
+
+	protected override async Task OnInitializedAsync() {
+		allParts = await FactoryService.GetAllPartsAsync();
+		allRecipes = await FactoryService.GetAllRecipesAsync();
 		await LoadGames();
 		selectedGame = await GameService.GetMostRecentGameAsync();
 		await LoadData();
 	}
 
-	private async Task LoadGames()
-	{
-		games = await GameService.GetAllGamesAsync().ConfigureAwait(false);
+	private async Task LoadGames() {
+		games = await GameService.GetAllGamesAsync();
 	}
 
-	private async Task LoadData()
-	{
-		factories = selectedGame == null
-			? new List<Factory>()
-			: await FactoryService.GetAllFactoriesAsync(selectedGame.Id).ConfigureAwait(false);
-		networks = selectedGame == null
-			? new List<Network>()
-			: await NetworkService.GetAllNetworksAsync(selectedGame.Id).ConfigureAwait(false);
-		allParts = await FactoryService.GetAllPartsAsync().ConfigureAwait(false);
-		allRecipes = await FactoryService.GetAllRecipesAsync().ConfigureAwait(false);
-
-		// Refresh selected factory if it exists
-		if (selectedFactory != null)
-		{
-			selectedFactory = await FactoryService.GetFactoryByIdAsync(selectedFactory.Id).ConfigureAwait(false);
-		}
+	private async Task LoadData() {
+		factories = selectedGame == null ? [] : await FactoryService.GetAllFactoriesAsync(selectedGame.Id);
+		networks = selectedGame == null ? [] : await NetworkService.GetAllNetworksAsync(selectedGame.Id);
+		// Re-point the selection at the freshly loaded instance (null if it was deleted).
+		selectedFactory = selectedFactory == null ? null : factories.FirstOrDefault(f => f.Id == selectedFactory.Id);
 	}
 
-	private async Task LoadDataAndRefreshBalance()
-	{
+	private async Task LoadDataAndRefreshBalance() {
 		await LoadData();
 		await TriggerBalanceRefresh();
 	}
 
-	private async Task TriggerBalanceRefresh()
-	{
-		if (resourceBalance != null)
-		{
-			await resourceBalance.RefreshBalanceDebounced();
+	private async Task TriggerBalanceRefresh() {
+		if (resourceBalance != null) {
+			await resourceBalance.RefreshBalance();
 		}
 	}
 
-	private async Task OnGameSelected(Game? game)
-	{
+	private async Task OnGameSelected(Game? game) {
 		selectedGame = game;
 		selectedFactory = null;
-
-		if (game != null)
-		{
+		if (game != null) {
 			await GameService.TouchGameAsync(game.Id);
 		}
 		// ResourceBalance refreshes itself when its GameId parameter changes on the re-render.
 		await LoadData();
 	}
 
-	private int FluidDivisor => selectedGame?.FluidDivisor ?? 1;
-
-	private async Task OnFluidDivisorChanged(int divisor)
-	{
-		if (selectedGame == null) return;
+	private async Task OnFluidDivisorChanged(int divisor) {
+		if (selectedGame == null) {
+			return;
+		}
 		await GameService.SetFluidDivisorAsync(selectedGame.Id, divisor);
 		selectedGame.FluidDivisor = divisor;
-		// ResourceBalance refreshes itself when its FluidDivisor parameter changes on the re-render.
-		StateHasChanged();
+		// ResourceBalance recalculates when its FluidDivisor parameter changes on the re-render.
 	}
 
-	private async Task OnGameOperation((Game game, string operation) args)
-	{
-		switch (args.operation)
-		{
+	private async Task OnGameOperation((Game game, string operation) args) {
+		switch (args.operation) {
 			case "create":
 				var created = await GameService.CreateGameAsync(args.game.Name);
 				await LoadGames();
 				await OnGameSelected(games.FirstOrDefault(g => g.Id == created.Id));
-				return;
+				break;
 			case "rename":
 				await GameService.RenameGameAsync(args.game.Id, args.game.Name);
 				await LoadGames();
 				selectedGame = games.FirstOrDefault(g => g.Id == args.game.Id);
-				return;
+				break;
 			case "delete":
 				await GameService.DeleteGameAsync(args.game.Id);
 				await LoadGames();
 				await OnGameSelected(await GameService.GetMostRecentGameAsync());
-				return;
+				break;
 			case "imported":
 				// Already created by GameTransferService; just show it.
 				await LoadGames();
 				await OnGameSelected(games.FirstOrDefault(g => g.Id == args.game.Id));
-				return;
+				break;
 		}
 	}
 
-	private async Task OnFactorySelected(Factory? factory)
-	{
-		await Task.CompletedTask;
+	private void OnFactorySelected(Factory? factory) {
 		selectedFactory = factory;
-		StateHasChanged();
 	}
 
-	private async Task OnFactoryListChanged()
-	{
-		// Update sorting values on factories
-		for (int i = 0; i < factories.Count; i++)
-		{
-			factories[i].Sorting = i;
-			await FactoryService.UpdateFactoryAsync(factories[i]);
-		}
+	private async Task OnFactoryListChanged() {
+		// FactoryList has already reordered the list in place.
+		await FactoryService.ReorderFactoriesAsync(factories.Select(f => f.Id).ToList());
 		await TriggerBalanceRefresh();
 	}
 
-	private async Task OnFactoryOperation((Factory factory, string operation) args)
-	{
-		switch (args.operation)
-		{
+	private async Task OnFactoryOperation((Factory factory, string operation) args) {
+		switch (args.operation) {
 			case "create":
-				if (selectedGame == null)
-				{
+				if (selectedGame == null) {
 					return;
 				}
 				await FactoryService.CreateFactoryAsync(args.factory.Name, selectedGame.Id);
-				break;
-			case "update":
-				await FactoryService.UpdateFactoryAsync(args.factory);
 				break;
 			case "delete":
 				await FactoryService.DeleteFactoryAsync(args.factory.Id);
 				selectedFactory = null;
 				break;
+			// "update": FactoryList has already saved the change; just reload.
 		}
 		await LoadDataAndRefreshBalance();
 	}
 
-	private void ShowUpdateFactoryModal()
-	{
-		factoryListComponent?.ShowUpdateFactoryModal();
+	private async Task ShowUpdateFactoryModal() {
+		if (factoryListComponent != null) {
+			await factoryListComponent.ShowUpdateFactoryModal();
+		}
 	}
 
-	private async Task DeleteSelectedFactory()
-	{
-		if (factoryListComponent != null)
-		{
+	private async Task DeleteSelectedFactory() {
+		if (factoryListComponent != null) {
 			await factoryListComponent.DeleteSelectedFactory();
 		}
 	}

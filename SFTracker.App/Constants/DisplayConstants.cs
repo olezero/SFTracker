@@ -1,22 +1,21 @@
+using System.Globalization;
+
 namespace SFTracker.Constants;
 
 /// <summary>
-/// Global constants for display formatting, particularly for decimal precision
+/// Number formatting shared by the UI.
 /// </summary>
-public static class DisplayConstants
-{
-    /// <summary>
-    /// Maximum number of decimal places to display in the UI
-    /// </summary>
-    public const int DecimalPlaces = 2;
-    
-    /// <summary>
-    /// Standard decimal format string for UI display
-    /// </summary>
-    public const string DecimalFormat = "F2";
-    
-    /// <summary>
-    /// Precision threshold for determining if a balance is considered "zero"
-    /// </summary>
-    public const double BalanceThreshold = 0.01;
+public static class DisplayConstants {
+	/// <summary>Format for the Resource Balance table (fixed two decimals).</summary>
+	public const string DecimalFormat = "F2";
+
+	/// <summary>Balances within ± this are shown as balanced (zero).</summary>
+	public const double BalanceThreshold = 0.01;
+
+	/// <summary>
+	/// Compact format for rates and multipliers in recipe rows and editors: up to 4 decimals, trailing
+	/// zeros trimmed. Invariant culture because the result is also fed back into number inputs.
+	/// </summary>
+	public static string FormatNumber(double value) =>
+		Math.Round(value, 4).ToString("0.####", CultureInfo.InvariantCulture);
 }

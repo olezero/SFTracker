@@ -25,7 +25,8 @@
 				@if (editingRecipeId == factoryRecipe.Id)
 				{
 					<div class="ms-auto d-flex align-items-center">
-						<input type="number" class="form-control form-control-sm me-1" @bind="editingRecipeMultiplier"
+						<input type="number" class="form-control form-control-sm me-1" @bind="editingRecipeMultiplier" @bind:event="oninput"
+							@onkeydown="e => OnEditRecipeKeyDown(e, factoryRecipe.Id)"
 							style="width: 70px;" step="0.1" min="0.1" />
 						<button class="btn btn-sm btn-success me-1" title="Save" @onclick="() => SaveRecipeEdit(factoryRecipe.Id)">
 							<i class="bi bi-check"></i>
@@ -211,6 +212,14 @@
 			await OnRecipeChanged.InvokeAsync();
 			CancelRecipeEdit();
 		}
+	}
+
+	private async Task OnEditRecipeKeyDown(KeyboardEventArgs e, int factoryRecipeId)
+	{
+		if (e.Key == "Enter")
+			await SaveRecipeEdit(factoryRecipeId);
+		else if (e.Key == "Escape")
+			CancelRecipeEdit();
 	}
 
 	private void CancelRecipeEdit()

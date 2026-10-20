@@ -149,6 +149,11 @@
 				await LoadGames();
 				await OnGameSelected(await GameService.GetMostRecentGameAsync());
 				return;
+			case "imported":
+				// Already created by GameTransferService; just show it.
+				await LoadGames();
+				await OnGameSelected(games.FirstOrDefault(g => g.Id == args.game.Id));
+				return;
 		}
 	}
 

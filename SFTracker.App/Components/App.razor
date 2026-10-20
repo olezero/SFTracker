@@ -46,6 +46,21 @@
 				const el = document.getElementById(id);
 				if (el) { el.focus(); el.select(); }
 			},
+			copyText: async function (text) {
+				try {
+					await navigator.clipboard.writeText(text);
+				} catch {
+					// Clipboard API needs a secure context; fall back to a hidden textarea + execCommand.
+					const ta = document.createElement('textarea');
+					ta.value = text;
+					ta.style.position = 'fixed';
+					ta.style.opacity = '0';
+					document.body.appendChild(ta);
+					ta.select();
+					document.execCommand('copy');
+					ta.remove();
+				}
+			},
 			// Hover tracking for Blazor.Bootstrap AutoComplete lists (RecipeListHover): the component
 			// renders its own <li> items with no per-item events, so we watch the marker's parent
 			// element and report the hovered item's text and viewport position to .NET.

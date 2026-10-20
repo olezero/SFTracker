@@ -32,6 +32,7 @@ builder.Services.AddSingleton<GameInfoService>();
 builder.Services.AddScoped<FactoryService>();
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<NetworkService>();
+builder.Services.AddScoped<GameTransferService>();
 builder.Services.AddScoped<DataImportService>();
 
 var app = builder.Build();

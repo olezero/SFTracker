@@ -1,0 +1,99 @@
+@using BlazorBootstrap
+@inject GameTransferService GameTransfer
+@inject IJSRuntime JSRuntime
+
+@* Export: the selected game as JSON for copying. Import: paste JSON, creates a NEW game and
+   never touches existing ones (import, delete the old, rename the imported to replace one). *@
+<Modal @ref="exportModal" Title="@($"Export: {exportGameName}")" Size="ModalSize.Large">
+	<BodyTemplate>
+		<textarea class="form-control font-monospace small" rows="20" readonly @bind="exportJson"></textarea>
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="() => exportModal.HideAsync()">Close</Button>
+		<Button Color="ButtonColor.Primary" @onclick="CopyExport">
+			<i class="bi @(copied ? "bi-clipboard-check" : "bi-clipboard")"></i> @(copied ? "Copied" : "Copy to clipboard")
+		</Button>
+	</FooterTemplate>
+</Modal>
+
+<Modal @ref="importModal" Title="Import game" Size="ModalSize.Large">
+	<BodyTemplate>
+		<p class="text-muted small mb-2">
+			Paste a game export below. It is created as a new game named "&lt;name&gt; (imported)"; existing games are
+			left alone. To replace a game: import, delete the old one, then rename the imported one.
+		</p>
+		<textarea class="form-control font-monospace small" rows="16" @bind="importJson" @bind:event="oninput"
+			placeholder="@ImportPlaceholder" disabled="@importing"></textarea>
+		@if (importError != null)
+		{
+			<div class="alert alert-danger mt-3 mb-0 py-2">@importError</div>
+		}
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="() => importModal.HideAsync()" Disabled="@importing">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="Import" Disabled="@(importing || string.IsNullOrWhiteSpace(importJson))" Loading="@importing">Import</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+	[Parameter] public EventCallback<Game> OnImported { get; set; }
+
+	// Blazor sets attributes verbatim (no HTML entity decoding), so the quotes live in C#.
+	private const string ImportPlaceholder = """{ "format": "sftracker-game", ... }""";
+
+	private Modal exportModal = default!;
+	private Modal importModal = default!;
+	private string exportGameName = "";
+	private string exportJson = "";
+	private bool copied;
+	private string importJson = "";
+	private string? importError;
+	private bool importing;
+
+	public async Task ShowExportAsync(Game game)
+	{
+		exportGameName = game.Name;
+		exportJson = await GameTransfer.ExportAsync(game.Id);
+		copied = false;
+		await exportModal.ShowAsync();
+	}
+
+	public async Task ShowImportAsync()
+	{
+		importJson = "";
+		importError = null;
+		importing = false;
+		await importModal.ShowAsync();
+	}
+
+	private async Task CopyExport()
+	{
+		await JSRuntime.InvokeVoidAsync("sftracker.copyText", exportJson);
+		copied = true;
+	}
+
+	private async Task Import()
+	{
+		if (importing || string.IsNullOrWhiteSpace(importJson)) return;
+		importing = true;
+		importError = null;
+		try
+		{
+			var game = await GameTransfer.ImportAsync(importJson);
+			await importModal.HideAsync();
+			await OnImported.InvokeAsync(game);
+		}
+		catch (GameImportException ex)
+		{
+			importError = ex.Message;
+		}
+		catch (Exception ex)
+		{
+			importError = $"Import failed: {ex.GetBaseException().Message}";
+		}
+		finally
+		{
+			importing = false;
+		}
+	}
+}

@@ -20,6 +20,13 @@
 	<button class="btn btn-secondary btn-sm" title="Delete game and all its factories" @onclick="DeleteGame" disabled="@(SelectedGame == null)">
 		<i class="bi bi-trash"></i>
 	</button>
+	<button class="btn btn-secondary btn-sm ms-2" title="Export this game as JSON" disabled="@(SelectedGame == null)"
+		@onclick="() => transferModals.ShowExportAsync(SelectedGame!)">
+		<i class="bi bi-box-arrow-up"></i> Export
+	</button>
+	<button class="btn btn-secondary btn-sm" title="Import a game from JSON (as a new game)" @onclick="() => transferModals.ShowImportAsync()">
+		<i class="bi bi-box-arrow-in-down"></i> Import
+	</button>
 
 	<label class="text-muted mb-0 ms-4" for="fluidDivisor" title="Fluid-scaling mod: every fluid amount in every recipe is divided by this">
 		<i class="bi bi-droplet"></i> Fluids ÷
@@ -38,6 +45,7 @@
 </div>
 
 <SettingsModal @ref="settingsModal" />
+<GameTransferModals @ref="transferModals" OnImported="OnGameImported" />
 
 <Modal @ref="createModal" Title="New Game">
 	<BodyTemplate>
@@ -77,6 +85,7 @@
 	private Modal createModal = default!;
 	private Modal renameModal = default!;
 	private SettingsModal settingsModal = default!;
+	private GameTransferModals transferModals = default!;
 	private string editName = "";
 
 	private async Task OnSelectChanged(ChangeEventArgs e)
@@ -98,6 +107,8 @@
 			await FluidDivisorChanged.InvokeAsync(divisor);
 		}
 	}
+
+	private Task OnGameImported(Game game) => OnGameOperation.InvokeAsync((game, "imported"));
 
 	private void ShowCreateModal()
 	{

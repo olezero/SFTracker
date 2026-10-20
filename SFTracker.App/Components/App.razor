@@ -45,6 +45,41 @@
 			focusAndSelect: function (id) {
 				const el = document.getElementById(id);
 				if (el) { el.focus(); el.select(); }
+			},
+			// Hover tracking for Blazor.Bootstrap AutoComplete lists (RecipeSelector): the component
+			// renders its own <li> items with no per-item events, so we watch the wrapper and report
+			// the hovered item's text and viewport position to .NET.
+			recipeHover: {
+				attach: function (root, dotNetRef) {
+					if (!root) return;
+					let current = null;
+					const call = (name, ...args) => dotNetRef.invokeMethodAsync(name, ...args).catch(() => { });
+					const leave = () => {
+						if (current === null) return;
+						current = null;
+						call('OnItemLeave');
+					};
+					const over = (e) => {
+						const li = e.target.closest('.autocomplete-list li');
+						if (!li || !root.contains(li)) { leave(); return; }
+						if (li === current) return;
+						current = li;
+						const r = li.getBoundingClientRect();
+						call('OnItemHover', li.textContent.trim(), r.top, r.left);
+					};
+					root.addEventListener('mouseover', over);
+					root.addEventListener('mouseleave', leave);
+					root.addEventListener('hide.bs.dropdown', leave);
+					root._recipeHover = { over, leave };
+				},
+				detach: function (root) {
+					const h = root && root._recipeHover;
+					if (!h) return;
+					root.removeEventListener('mouseover', h.over);
+					root.removeEventListener('mouseleave', h.leave);
+					root.removeEventListener('hide.bs.dropdown', h.leave);
+					delete root._recipeHover;
+				}
 			}
 		};
 	</script>

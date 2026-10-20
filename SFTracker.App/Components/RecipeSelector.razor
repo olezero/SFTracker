@@ -1,13 +1,22 @@
 @using SFTracker.Models
 @using BlazorBootstrap
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
-<AutoComplete TItem="DbRecipe"
-			  @bind-Value="selectedText"
-			  DataProvider="RecipesDataProvider"
-			  PropertyName="Name"
-			  Placeholder="@Placeholder"
-			  OnChanged="OnRecipeSelected"
-			  class="@CssClass" />
+<div @ref="rootElement">
+	<AutoComplete TItem="DbRecipe"
+				  @bind-Value="selectedText"
+				  DataProvider="RecipesDataProvider"
+				  PropertyName="Name"
+				  Placeholder="@Placeholder"
+				  OnChanged="OnRecipeSelected"
+				  class="@CssClass" />
+</div>
+
+@if (tipRecipe != null)
+{
+	<RecipeHoverCard Recipe="tipRecipe" Top="tipTop" Left="tipLeft" FluidDivisor="FluidDivisor" />
+}
 
 @code {
 	[Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = new List<DbRecipe>();
@@ -15,13 +24,50 @@
 	[Parameter] public EventCallback<DbRecipe?> SelectedRecipeChanged { get; set; }
 	[Parameter] public string Placeholder { get; set; } = "Select a recipe...";
 	[Parameter] public string CssClass { get; set; } = "";
+	[Parameter] public int FluidDivisor { get; set; } = 1;
 
 	private string selectedText = string.Empty;
+
+	// Hover card state. AutoComplete renders its own list items without any per-item hooks, so a
+	// small JS listener (sftracker.recipeHover in App.razor) reports the hovered item's text and
+	// position back here; recipe names are unique, so the text identifies the recipe.
+	private ElementReference rootElement;
+	private DotNetObjectReference<RecipeSelector>? dotNetRef;
+	private DbRecipe? tipRecipe;
+	private double tipTop;
+	private double tipLeft;
 
 	protected override void OnParametersSet()
 	{
 		// Keep the textbox in sync when the bound recipe is set/cleared externally
 		selectedText = SelectedRecipe?.Name ?? string.Empty;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			dotNetRef = DotNetObjectReference.Create(this);
+			await JSRuntime.InvokeVoidAsync("sftracker.recipeHover.attach", rootElement, dotNetRef);
+		}
+	}
+
+	[JSInvokable]
+	public void OnItemHover(string name, double top, double left)
+	{
+		tipRecipe = Recipes.FirstOrDefault(r => r.Name == name);
+		tipTop = top;
+		tipLeft = left;
+		StateHasChanged();
+	}
+
+	[JSInvokable]
+	public void OnItemLeave()
+	{
+		if (tipRecipe == null)
+			return;
+		tipRecipe = null;
+		StateHasChanged();
 	}
 
 	private async Task<AutoCompleteDataProviderResult<DbRecipe>> RecipesDataProvider(AutoCompleteDataProviderRequest<DbRecipe> request)
@@ -45,8 +91,23 @@
 
 	private async Task OnRecipeSelected(DbRecipe? recipe)
 	{
+		tipRecipe = null;
 		SelectedRecipe = recipe;
 		selectedText = recipe?.Name ?? string.Empty;
 		await SelectedRecipeChanged.InvokeAsync(recipe);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (dotNetRef != null)
+		{
+			try {
+				await JSRuntime.InvokeVoidAsync("sftracker.recipeHover.detach", rootElement);
+			} catch (JSDisconnectedException) {
+				// Circuit already gone; nothing to clean up on the client.
+			}
+			dotNetRef.Dispose();
+			dotNetRef = null;
+		}
 	}
 }

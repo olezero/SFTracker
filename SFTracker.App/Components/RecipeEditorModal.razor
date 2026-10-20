@@ -8,7 +8,7 @@
 	<BodyTemplate>
 		<div class="mb-3">
 			<label for="recipeSelect" class="form-label">Recipe</label>
-			<RecipeSelector Recipes="@Recipes" SelectedRecipe="@CurrentRecipe"
+			<RecipeSelector FluidDivisor="@FluidDivisor" Recipes="@Recipes" SelectedRecipe="@CurrentRecipe"
 				SelectedRecipeChanged="OnRecipeSelect" CssClass="form-select-sm" />
 		</div>
 		@if (CurrentRecipe != null)

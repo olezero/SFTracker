@@ -1,0 +1,43 @@
+@using SFTracker.Models
+
+@* Fixed-position hover card showing a recipe's inputs/outputs per machine, with icons.
+   Positioned at the hovered element's top-left corner (viewport coordinates) and shifted
+   to its left via .recipe-tip in app.css. *@
+<div class="recipe-tip" style="top: @(Top)px; left: @(Left)px;">
+	<div class="recipe-tip-title">@Recipe.Name</div>
+	<div class="recipe-tip-body">
+		<div class="recipe-tip-col">
+			@foreach (var input in Recipe.Inputs.OrderBy(i => i.Id))
+			{
+				<div class="recipe-tip-row @(input.PartId == HighlightPartId ? "recipe-tip-match" : "")">
+					<img src="@input.Part.ImageUrl" alt="" onerror="this.style.visibility='hidden'">
+					<span class="recipe-tip-name">@input.Part.Name</span>
+					<span class="recipe-tip-rate">@FormatNumber(input.GetQuantityPerMinute(1, FluidDivisor))/min</span>
+				</div>
+			}
+		</div>
+		<i class="bi bi-arrow-right recipe-tip-arrow"></i>
+		<div class="recipe-tip-col">
+			@foreach (var output in Recipe.Outputs.OrderBy(o => o.Id))
+			{
+				<div class="recipe-tip-row @(output.PartId == HighlightPartId ? "recipe-tip-match" : "")">
+					<img src="@output.Part.ImageUrl" alt="" onerror="this.style.visibility='hidden'">
+					<span class="recipe-tip-name">@output.Part.Name</span>
+					<span class="recipe-tip-rate">@FormatNumber(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor))/min</span>
+				</div>
+			}
+		</div>
+	</div>
+	<div class="recipe-tip-footer">Per machine &middot; @FormatNumber(Recipe.TimeSeconds)s cycle</div>
+</div>
+
+@code {
+	[Parameter, EditorRequired] public DbRecipe Recipe { get; set; } = null!;
+	/// <summary>Part to highlight in the card (the ingredient the picker is for), if any.</summary>
+	[Parameter] public int? HighlightPartId { get; set; }
+	[Parameter] public double Top { get; set; }
+	[Parameter] public double Left { get; set; }
+	[Parameter] public int FluidDivisor { get; set; } = 1;
+
+	private static string FormatNumber(double value) => Math.Round(value, 4).ToString("0.####");
+}

@@ -63,11 +63,13 @@
 									disabled="@(producers.Count == 0)" title="Add a recipe that produces @input.Part.Name">
 									<i class="bi bi-plus-lg"></i>
 								</button>
-								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;">
+								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;" @onmouseleave="HideRecipeTip">
 									<li><h6 class="dropdown-header">Produces @input.Part.Name</h6></li>
 									@foreach (var recipe in producers)
 									{
-										<li><button type="button" class="dropdown-item" @onclick="() => AddRecipeForPart(recipe, input.PartId, asProducer: true)">@recipe.Name</button></li>
+										<li><button type="button" class="dropdown-item"
+											@onmouseenter="e => ShowRecipeTip(recipe, input.PartId, e)" @onmouseleave="HideRecipeTip"
+											@onclick="() => AddRecipeForPart(recipe, input.PartId, asProducer: true)">@recipe.Name</button></li>
 									}
 								</ul>
 								<button type="button" class="btn btn-outline-secondary"
@@ -100,11 +102,13 @@
 									disabled="@(consumers.Count == 0)" title="Add a recipe that consumes @output.Part.Name">
 									<i class="bi bi-plus-lg"></i>
 								</button>
-								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;">
+								<ul class="dropdown-menu dropdown-menu-end" style="max-height: 320px; overflow-y: auto;" @onmouseleave="HideRecipeTip">
 									<li><h6 class="dropdown-header">Consumes @output.Part.Name</h6></li>
 									@foreach (var recipe in consumers)
 									{
-										<li><button type="button" class="dropdown-item" @onclick="() => AddRecipeForPart(recipe, output.PartId, asProducer: false)">@recipe.Name</button></li>
+										<li><button type="button" class="dropdown-item"
+											@onmouseenter="e => ShowRecipeTip(recipe, output.PartId, e)" @onmouseleave="HideRecipeTip"
+											@onclick="() => AddRecipeForPart(recipe, output.PartId, asProducer: false)">@recipe.Name</button></li>
 									}
 								</ul>
 								<button type="button" class="btn btn-outline-secondary"
@@ -142,6 +146,12 @@
 	</ItemTemplate>
 </SortableList>
 
+@* Hover card for recipes in the per-ingredient "+" dropdowns. *@
+@if (tipRecipe != null)
+{
+	<RecipeHoverCard Recipe="tipRecipe" HighlightPartId="tipPartId" Top="tipTop" Left="tipLeft" FluidDivisor="FluidDivisor" />
+}
+
 @* Advanced Recipe Modals *@
 <RecipeEditorModal @ref="advancedEditRecipeModal" Recipes="AllRecipes" IsEditMode="true"
 	SelectedRecipe="editModalSelectedRecipe" InitialMultiplier="editModalInitialMultiplier"
@@ -174,6 +184,12 @@
 	private int? editModalFactoryRecipeId;
 	private int? editModalHighlightInputId;
 	private int? editModalHighlightOutputId;
+
+	// Recipe hover card state (for the per-ingredient "+" dropdowns)
+	private DbRecipe? tipRecipe;
+	private int tipPartId;
+	private double tipTop;
+	private double tipLeft;
 
 	// Delete confirmation state
 	private int? pendingDeleteRecipeId = null;
@@ -418,8 +434,24 @@
 	/// factory's current shortfall of the part; as a consumer it is sized to eat the current surplus.
 	/// Falls back to 1x when there is no gap to fill.
 	/// </summary>
+	private void ShowRecipeTip(DbRecipe recipe, int partId, MouseEventArgs e)
+	{
+		tipRecipe = recipe;
+		tipPartId = partId;
+		// Offset* are relative to the hovered item, so this is the item's top-left corner in viewport
+		// coordinates; the card is placed to the left of it (see .recipe-tip in app.css).
+		tipTop = e.ClientY - e.OffsetY;
+		tipLeft = e.ClientX - e.OffsetX;
+	}
+
+	private void HideRecipeTip()
+	{
+		tipRecipe = null;
+	}
+
 	private async Task AddRecipeForPart(DbRecipe recipe, int partId, bool asProducer)
 	{
+		HideRecipeTip();
 		var multiplier = 1.0;
 		var gap = GetUncoveredDemand(null, partId); // positive = shortfall, negative = surplus
 

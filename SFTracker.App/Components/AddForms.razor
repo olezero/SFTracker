@@ -7,7 +7,7 @@
 		<label class="form-label small">Add Recipe</label>
 		<div class="row g-2">
 			<div class="col-12 dropup-fix">
-				<RecipeSelector Recipes="@AllRecipes" @bind-SelectedRecipe="newRecipe"
+				<RecipeSelector FluidDivisor="@FluidDivisor" Recipes="@AllRecipes" @bind-SelectedRecipe="newRecipe"
 					Placeholder="Select a recipe..." CssClass="form-select-sm" />
 			</div>
 			<div class="col-12 btn-group btn-group-sm" role="group">

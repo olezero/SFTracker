@@ -12,10 +12,13 @@
 				</button>
 			</div>
 		</div>
+		@* Body scrolls (recipes + manual inputs/outputs); the add forms stay pinned in the footer. *@
 		<div class="card-body">
 			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" FluidDivisor="@FluidDivisor"
 				OnRecipeChanged="@OnChanged" />
 			<CustomInputOutput SelectedFactory="@SelectedFactory" AllParts="@AllParts" OnChanged="@OnChanged" />
+		</div>
+		<div class="card-footer">
 			<AddForms SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" AllParts="@AllParts" FluidDivisor="@FluidDivisor"
 				OnAdded="@OnChanged" />
 		</div>

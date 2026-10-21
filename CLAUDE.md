@@ -68,7 +68,7 @@ dotnet test                               # NUnit tests in SFTracker.Tests
 ## Conventions
 
 - Indentation is **tabs** (`.editorconfig`), K&R braces (`{` on the same line — `csharp_new_line_before_open_brace = none`), including in Razor `@code` blocks.
-- Private instance fields in services use the `m_` prefix (`m_context`, `m_gameData`); component-local fields in `.razor` use plain camelCase. **Local functions are camelCase** (`balanceFor`, `tryParse`), not PascalCase: the `.editorconfig` naming rules treat them as "everything else". `dotnet format -v d` reports violations as IDE1006 warnings; run it after adding code.
+- Private instance fields in services use the `m_` prefix (`m_context`, `m_gameData`); component-local fields in `.razor` use plain camelCase. **Local functions are camelCase** (`balanceFor`, `tryParse`), not PascalCase: the `.editorconfig` naming rules treat them as "everything else". `dotnet format` reports naming violations as IDE1006 warnings, but it also **rewrites code** (analyzer fixers, e.g. EF1002 turned an `ExecuteSqlRawAsync($"…")` into a parameterised `ExecuteSqlAsync` and broke the schema upgrader). Always run it **before** `dotnet build`/`dotnet test`, never between the last test run and a commit.
 - FICSMAS (holiday event) parts/recipes are filtered out of queries by name — preserve the `!Name.Contains("FICSMAS")` filters when adding recipe/part queries.
 - `DataImportService` skips recipes whose `BatchTime` contains `/` (fractional times) — a known gap noted in code.
 - Commits are mostly `wip`. Never commit or push on your own: after a change, stop and let the user verify it in the app first; commit + push only when they explicitly give the go-ahead.

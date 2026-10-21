@@ -26,7 +26,10 @@ public static class SchemaUpgrader {
 			if (await ColumnExistsAsync(context, step.Table, step.Column)) {
 				continue;
 			}
-			await context.Database.ExecuteSqlAsync($"ALTER TABLE \"{step.Table}\" ADD COLUMN \"{step.Column}\" {step.Definition}");
+			// A plain string on purpose: DDL cannot take parameters, and `dotnet format` rewrites an
+			// interpolated ExecuteSqlRaw call into the parameterised ExecuteSql (EF1002), which breaks it.
+			var sql = "ALTER TABLE \"" + step.Table + "\" ADD COLUMN \"" + step.Column + "\" " + step.Definition;
+			await context.Database.ExecuteSqlRawAsync(sql);
 			logger?.LogInformation("Schema upgrade: added column {Table}.{Column}.", step.Table, step.Column);
 			applied++;
 		}

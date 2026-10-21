@@ -18,9 +18,9 @@
 			<div class="mb-3">
 				<div class="d-flex align-items-center">
 					<label class="form-label mb-0 flex-grow-1">Multiplier</label>
-					<input type="number" id="@MultiplierElementId"
+					<input type="text" inputmode="decimal" id="@MultiplierElementId"
 						class="form-control ms-2 form-control-sm @(highlightMultiplier ? "border-info" : "")" style="width: 120px;"
-						value="@FormatNumber(multiplier)" @oninput="OnMultiplierChange" min="0" step="0.1">
+						value="@multiplierText" @oninput="OnMultiplierChange" title="@ExpressionHint">
 				</div>
 			</div>
 			<div class="mb-3">
@@ -41,10 +41,10 @@
 							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="flex-grow-1">@input.Part.Name</span>
-							<input type="number" id="@InputElementId(input.Id)"
+							<input type="text" inputmode="decimal" id="@InputElementId(input.Id)"
 								class="form-control ms-2 form-control-sm @(highlightInputId == input.Id ? "border-info" : "")" style="width: 120px;"
-								value="@FormatNumber(inputValues[input.Id])"
-								@oninput="e => OnInputChange(input, e)" min="0">
+								value="@inputTexts[input.Id]"
+								@oninput="e => OnInputChange(input, e)" title="@ExpressionHint">
 						</div>
 					}
 				</div>
@@ -56,10 +56,10 @@
 							<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="flex-grow-1">@output.Part.Name</span>
-							<input type="number" id="@OutputElementId(output.Id)"
+							<input type="text" inputmode="decimal" id="@OutputElementId(output.Id)"
 								class="form-control ms-2 form-control-sm @(highlightOutputId == output.Id ? "border-info" : "")" style="width: 120px;"
-								value="@FormatNumber(outputValues[output.Id])"
-								@oninput="e => OnOutputChange(output, e)" min="0">
+								value="@outputTexts[output.Id]"
+								@oninput="e => OnOutputChange(output, e)" title="@ExpressionHint">
 						</div>
 					}
 				</div>
@@ -111,8 +111,14 @@
 	private DbRecipe? currentRecipe;
 	private double multiplier = 1.0;
 	private bool isSlooped;
-	private readonly Dictionary<int, double> inputValues = [];
-	private readonly Dictionary<int, double> outputValues = [];
+
+	// What each field shows. Fields accept arithmetic ("190-30"), so the one being typed in keeps its
+	// raw text while every other field is rewritten from the evaluated multiplier. An incomplete or
+	// invalid expression leaves the multiplier (and so the other fields) at the last good value.
+	private const string ExpressionHint = "A number or simple maths, e.g. 190-30 or 2*7.5";
+	private string multiplierText = "1";
+	private readonly Dictionary<int, string> inputTexts = [];
+	private readonly Dictionary<int, string> outputTexts = [];
 
 	// Field to highlight and focus when the modal opens.
 	private int? highlightInputId;
@@ -150,24 +156,29 @@
 		RecalculateRates();
 	}
 
-	/// <summary>Derives every input/output rate from the current multiplier and sloop state.</summary>
+	/// <summary>Rewrites every field's text from the current multiplier and sloop state.</summary>
 	private void RecalculateRates() {
-		inputValues.Clear();
-		outputValues.Clear();
+		multiplierText = FormatNumber(multiplier);
+		inputTexts.Clear();
+		outputTexts.Clear();
 		if (currentRecipe == null) {
 			return;
 		}
 		foreach (var input in currentRecipe.Inputs) {
-			inputValues[input.Id] = input.GetQuantityPerMinute(multiplier, FluidDivisor);
+			inputTexts[input.Id] = FormatNumber(input.GetQuantityPerMinute(multiplier, FluidDivisor));
 		}
 		foreach (var output in currentRecipe.Outputs) {
-			outputValues[output.Id] = output.GetQuantityPerMinute(multiplier, isSlooped, FluidDivisor);
+			outputTexts[output.Id] = FormatNumber(output.GetQuantityPerMinute(multiplier, isSlooped, FluidDivisor));
 		}
 	}
 
 	private void OnMultiplierChange(ChangeEventArgs e) {
-		multiplier = ParseNumber(e.Value);
-		RecalculateRates();
+		var text = e.Value?.ToString() ?? "";
+		if (ExpressionEvaluator.TryEvaluate(text, out var value)) {
+			multiplier = value;
+			RecalculateRates();
+		}
+		multiplierText = text;
 	}
 
 	private void OnSloopedChange(ChangeEventArgs e) {
@@ -175,31 +186,25 @@
 		RecalculateRates();
 	}
 
-	// Editing a rate back-calculates the multiplier. The edited field keeps the typed value so the
+	// Editing a rate back-calculates the multiplier. The edited field keeps the typed text so the
 	// user's input isn't reformatted under them.
 	private void OnInputChange(DbRecipeInput input, ChangeEventArgs e) {
-		if (input.Quantity == 0) {
-			return;
+		var text = e.Value?.ToString() ?? "";
+		if (input.Quantity != 0 && ExpressionEvaluator.TryEvaluate(text, out var value)) {
+			multiplier = value / input.GetQuantityPerMinute(1.0, FluidDivisor);
+			RecalculateRates();
 		}
-		var value = ParseNumber(e.Value);
-		multiplier = value / input.GetQuantityPerMinute(1.0, FluidDivisor);
-		RecalculateRates();
-		inputValues[input.Id] = value;
+		inputTexts[input.Id] = text;
 	}
 
 	private void OnOutputChange(DbRecipeOutput output, ChangeEventArgs e) {
-		if (output.Quantity == 0) {
-			return;
+		var text = e.Value?.ToString() ?? "";
+		if (output.Quantity != 0 && ExpressionEvaluator.TryEvaluate(text, out var value)) {
+			multiplier = value / output.GetQuantityPerMinute(1.0, isSlooped, FluidDivisor);
+			RecalculateRates();
 		}
-		var value = ParseNumber(e.Value);
-		multiplier = value / output.GetQuantityPerMinute(1.0, isSlooped, FluidDivisor);
-		RecalculateRates();
-		outputValues[output.Id] = value;
+		outputTexts[output.Id] = text;
 	}
-
-	// type="number" inputs always report "." as the decimal separator.
-	private static double ParseNumber(object? value) =>
-		double.TryParse(value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
 
 	private async Task HideModal() {
 		await modal.HideAsync();

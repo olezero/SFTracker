@@ -1,5 +1,6 @@
 @using static SFTracker.Constants.DisplayConstants
 @inject FactoryService FactoryService
+@inject GameInfoService GameInfoService
 @implements IDisposable
 
 <!-- Recipe Sections -->
@@ -8,7 +9,9 @@
 	<ItemTemplate>
 		@{
 			// Main product = first output (index 0); recipes list their primary product first.
-			var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part;
+			// Generator recipes have no outputs, so they fall back to their fuel (first input).
+			var mainProduct = factoryRecipe.Recipe.Outputs.OrderBy(o => o.Id).FirstOrDefault()?.Part
+				?? factoryRecipe.Recipe.Inputs.OrderBy(i => i.Id).FirstOrDefault()?.Part;
 		}
 		<div class="d-flex align-items-center mb-2 border-bottom pb-2 border-secondary">
 			<!-- Main product icon (far left) - doubles as drag handle -->
@@ -108,6 +111,16 @@
 									<i class="bi @(isEnabled ? "bi-eye-slash" : "bi-eye")"></i>
 								</button>
 							</div>
+						</div>
+					}
+					@* Generators: the power one machine makes, scaled by the multiplier. Not part of the
+					   balance (yet), and unaffected by the fluid divisor or sloops. *@
+					@if (GameInfoService.GetGeneratorPowerMW(factoryRecipe.Recipe.Machine) is double powerPerMachine)
+					{
+						<div class="d-flex align-items-center mb-1" title="Power output at 100% clock per machine-equivalent">
+							<i class="bi bi-lightning-charge-fill text-warning me-2" style="width: 24px; text-align: center;"></i>
+							<span class="me-2 flex-grow-1">Power (MW)</span>
+							@RecipeRate(powerPerMachine, factoryRecipe.Multiplier, false, powerPerMachine * factoryRecipe.Multiplier, true)
 						</div>
 					}
 				</div>

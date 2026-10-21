@@ -4,7 +4,7 @@ using SFTracker.Data;
 namespace SFTracker.Services;
 
 /// <summary>
-/// The startup database sequence (create schema if missing, seed parts/recipes, ensure a game exists).
+/// The startup database sequence (create schema if missing, upgrade an existing schema, seed parts/recipes, ensure a game exists).
 /// Runs at boot and again whenever the user points the app at a different database file.
 /// </summary>
 public static class DatabaseInitializer {
@@ -20,7 +20,10 @@ public static class DatabaseInitializer {
 		}
 
 		var context = scoped.GetRequiredService<SFTrackerDbContext>();
+		// Fresh file: full current schema. Existing file: EnsureCreated does nothing, so the upgrader
+		// adds whatever the file is missing (see README.md, "Schema changes").
 		await context.Database.EnsureCreatedAsync();
+		await SchemaUpgrader.UpgradeAsync(context, scoped.GetRequiredService<ILogger<SFTrackerDbContext>>());
 
 		var dataImportService = scoped.GetRequiredService<DataImportService>();
 		await dataImportService.ImportPartsAsync();

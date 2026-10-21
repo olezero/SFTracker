@@ -16,6 +16,10 @@ public class DbRecipe {
 	[MaxLength(500)]
 	public string Tier { get; set; } = string.Empty;
 
+	/// <summary>Name of the building that runs this recipe, as in game_data.json (e.g. "Fuel-Powered Generator").</summary>
+	[MaxLength(200)]
+	public string Machine { get; set; } = string.Empty;
+
 	[Range(typeof(double), "0", "999999999")]
 	public double TimeSeconds { get; set; }
 

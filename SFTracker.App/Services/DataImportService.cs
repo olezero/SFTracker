@@ -41,6 +41,7 @@ public class DataImportService {
 	}
 
 	public async Task ImportRecipesAsync() {
+		await BackfillMachinesAsync();
 		var existing = await m_context.Recipes.Select(r => r.Name).ToHashSetAsync();
 		var partIdsByName = await m_context.Parts.ToDictionaryAsync(p => p.Name, p => p.Id);
 
@@ -49,6 +50,7 @@ public class DataImportService {
 			var dbRecipe = new DbRecipe {
 				Name = recipe.Name,
 				Tier = recipe.Tier ?? string.Empty,
+				Machine = recipe.Machine,
 				TimeSeconds = ParseNumber(recipe.BatchTime),
 				IsAlternate = recipe.Alternate ?? false
 			};
@@ -73,6 +75,29 @@ public class DataImportService {
 		m_context.Recipes.AddRange(newRecipes);
 		await m_context.SaveChangesAsync();
 		m_logger.LogInformation("Imported {Count} recipes from game data.", newRecipes.Count);
+	}
+
+	/// <summary>
+	/// Fills <see cref="DbRecipe.Machine"/> on recipes imported before that column existed (the column
+	/// was added to live databases by hand with an empty default).
+	/// </summary>
+	private async Task BackfillMachinesAsync() {
+		var missing = await m_context.Recipes.Where(r => r.Machine == string.Empty).ToListAsync();
+		if (missing.Count == 0) {
+			return;
+		}
+		var machinesByRecipe = m_gameInfoService.GameData.Recipes.ToDictionary(r => r.Name, r => r.Machine);
+		var filled = 0;
+		foreach (var recipe in missing) {
+			if (machinesByRecipe.TryGetValue(recipe.Name, out var machine) && machine != string.Empty) {
+				recipe.Machine = machine;
+				filled++;
+			}
+		}
+		if (filled > 0) {
+			await m_context.SaveChangesAsync();
+			m_logger.LogInformation("Filled in the machine of {Count} existing recipes.", filled);
+		}
 	}
 
 	/// <summary>Parses a game-data number, which is either plain ("30", "-1") or a fraction ("12/5", "-9/5").</summary>

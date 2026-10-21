@@ -11,7 +11,7 @@
 				<div class="recipe-tip-row @(input.PartId == HighlightPartId ? "recipe-tip-match" : "")">
 					<img src="@input.Part.ImageUrl" alt="" onerror="this.style.visibility='hidden'">
 					<span class="recipe-tip-name">@input.Part.Name</span>
-					<span class="recipe-tip-rate">@FormatNumber(input.GetQuantityPerMinute(1, FluidDivisor))/min</span>
+					<span class="recipe-tip-rate">@FormatNumber(input.GetQuantityPerMinute(1, FluidDivisor))</span>
 				</div>
 			}
 		</div>
@@ -22,7 +22,7 @@
 				<div class="recipe-tip-row @(output.PartId == HighlightPartId ? "recipe-tip-match" : "")">
 					<img src="@output.Part.ImageUrl" alt="" onerror="this.style.visibility='hidden'">
 					<span class="recipe-tip-name">@output.Part.Name</span>
-					<span class="recipe-tip-rate">@FormatNumber(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor))/min</span>
+					<span class="recipe-tip-rate">@FormatNumber(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor))</span>
 				</div>
 			}
 		</div>

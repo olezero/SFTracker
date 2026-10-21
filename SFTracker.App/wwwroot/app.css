@@ -249,3 +249,48 @@ a, .btn-link {
 .modal-backdrop {
 	transition: none !important;
 }
+
+/* Recipe row rates (RecipeSection): "per-machine × multiplier [× 2] = total" in fixed-width
+   columns with tabular digits so the rows of a recipe line up. The factors are muted; the
+   total carries the badge and is what you read at a glance. Widths are generous enough for
+   4-decimal rates and 4-digit totals; a longer value only shifts its own recipe's rows. */
+.recipe-rate {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: #8a8a8a;
+}
+
+.recipe-rate-per {
+	min-width: 6.5ch;
+	text-align: right;
+}
+
+.recipe-rate-mult {
+	min-width: 6.5ch;
+}
+
+.recipe-rate-sloop {
+	color: #c0a060;
+}
+
+/* Fixed-width slot, right-aligned, so a wider total badge grows leftwards into the slot
+   instead of pushing the "=" and the factors out of line. */
+.recipe-rate-total {
+	min-width: 3.9rem;
+	text-align: right;
+}
+
+.recipe-rate-total .badge {
+	font-size: 0.8rem;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Somersloop icon next to the recipe name when the recipe is slooped. */
+.recipe-sloop-icon {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+}

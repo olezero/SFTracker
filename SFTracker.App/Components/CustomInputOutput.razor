@@ -35,7 +35,7 @@
 						<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 						<span class="me-2 flex-grow-1">@input.Part.Name</span>
-						<span class="badge bg-secondary me-2">@input.AmountPerMinute/min</span>
+						<span class="badge bg-secondary me-2">@input.AmountPerMinute</span>
 						<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditInput(input)">
 							<i class="bi bi-pencil"></i>
 						</button>
@@ -78,7 +78,7 @@
 						<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 							style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 						<span class="me-2 flex-grow-1">@output.Part.Name</span>
-						<span class="badge bg-secondary me-2">@output.AmountPerMinute/min</span>
+						<span class="badge bg-secondary me-2">@output.AmountPerMinute</span>
 						<button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditOutput(output)">
 							<i class="bi bi-pencil"></i>
 						</button>

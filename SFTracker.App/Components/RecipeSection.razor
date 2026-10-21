@@ -23,6 +23,10 @@
 		<div class="flex-grow-1">
 			<div class="fw-bold mb-1 d-flex align-items-center">
 				<span>@factoryRecipe.Recipe.Name</span>
+				@if (factoryRecipe.IsSlooped)
+				{
+					<img src="images/Somersloop.png" alt="Slooped" title="Slooped: output doubled" class="ms-2 recipe-sloop-icon">
+				}
 				<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
 					title="Machines needed - click to edit"
 					@onclick="() => ShowEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
@@ -41,7 +45,8 @@
 								<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">@input.Part.Name</span>
-								<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeInputText(factoryRecipe, input)</span>
+								@RecipeRate(input.GetQuantityPerMinute(1, FluidDivisor), factoryRecipe.Multiplier, false,
+									input.GetQuantityPerMinute(factoryRecipe, FluidDivisor), isEnabled)
 							</div>
 							<div class="btn-group ms-2 me-2 flex-shrink-0 ingredient-actions" role="group">
 								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
@@ -80,7 +85,8 @@
 								<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">@output.Part.Name</span>
-								<span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@GetRecipeOutputText(factoryRecipe, output)</span>
+								@RecipeRate(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor), factoryRecipe.Multiplier, factoryRecipe.IsSlooped,
+									output.GetQuantityPerMinute(factoryRecipe, FluidDivisor), isEnabled)
 							</div>
 							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group">
 								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
@@ -256,22 +262,20 @@
 		}
 	}
 
-	private string GetRecipeInputText(FactoryRecipe factoryRecipe, DbRecipeInput input) =>
-		RateText(input.GetQuantityPerMinute(1, FluidDivisor), factoryRecipe.Multiplier, slooped: false,
-			input.GetQuantityPerMinute(factoryRecipe, FluidDivisor));
-
-	private string GetRecipeOutputText(FactoryRecipe factoryRecipe, DbRecipeOutput output) =>
-		RateText(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor), factoryRecipe.Multiplier, factoryRecipe.IsSlooped,
-			output.GetQuantityPerMinute(factoryRecipe, FluidDivisor));
-
-	// "total/min" for a plain 1x recipe, otherwise "perMachine x multiplier [x 2 (slooped)] = total/min".
-	private static string RateText(double perMachine, double multiplier, bool slooped, double total)
-	{
-		var factors = (multiplier != 1.0 ? $" x {FormatNumber(multiplier)}" : "") + (slooped ? " x 2 (slooped)" : "");
-		return factors.Length == 0
-			? $"{FormatNumber(total)}/min"
-			: $"{FormatNumber(perMachine)}{factors} = {FormatNumber(total)}/min";
-	}
+	// "perMachine × multiplier [× 2] = total" laid out in fixed-width columns so the rows of a
+	// recipe line up; a plain 1x recipe shows only the total. The sloop marker sits inline after
+	// the multiplier (it is per recipe, so every row of a slooped recipe carries it).
+	private static RenderFragment RecipeRate(double perMachine, double multiplier, bool slooped, double total, bool isEnabled) =>
+		@<span class="recipe-rate">
+			@if (multiplier != 1.0 || slooped)
+			{
+				<span class="recipe-rate-per">@FormatNumber(perMachine)</span>
+				<span class="recipe-rate-mult">× @FormatNumber(multiplier)@if (slooped)
+					{<span class="recipe-rate-sloop" title="Slooped: output doubled"> × 2</span>}</span>
+				<span>=</span>
+			}
+			<span class="recipe-rate-total"><span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@FormatNumber(total)</span></span>
+		</span>;
 
 	/// <summary>
 	/// Multiplier that makes this recipe's main product exactly cover the rest of the
@@ -399,7 +403,7 @@
 			return $"No uncovered demand for {output.Part.Name} in this factory";
 
 		var rate = output.GetQuantityPerMinute(demandMultiplier.Value, factoryRecipe.IsSlooped, FluidDivisor);
-		return $"Match demand: set to {FormatNumber(demandMultiplier.Value)} x ({FormatNumber(rate)} {output.Part.Name}/min)";
+		return $"Match demand: set to {FormatNumber(demandMultiplier.Value)} x ({FormatNumber(rate)} {output.Part.Name})";
 	}
 
 	private async Task MatchDemand(FactoryRecipe factoryRecipe, double? demandMultiplier)

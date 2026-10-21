@@ -22,7 +22,7 @@
 	</div>
 	<div class="grid-stack-item" gs-id="@DashboardLayout.Detail" @attributes="GridAttributes(DashboardLayout.Detail)">
 		<div class="grid-stack-item-content">
-			<FactoryDetail SelectedFactory="@selectedFactory" AllParts="@allParts" AllRecipes="@allRecipes" FluidDivisor="@FluidDivisor"
+			<FactoryDetail SelectedFactory="@selectedFactory" Factories="@factories" AllParts="@allParts" AllRecipes="@allRecipes" FluidDivisor="@FluidDivisor"
 				OnShowUpdateFactoryModal="@ShowUpdateFactoryModal" OnDeleteSelectedFactory="@DeleteSelectedFactory"
 				OnChanged="@LoadDataAndRefreshBalance" />
 		</div>

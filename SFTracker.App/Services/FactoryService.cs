@@ -189,6 +189,23 @@ public class FactoryService {
 		await m_context.SaveChangesAsync();
 	}
 
+	/// <summary>
+	/// Move a recipe row to another factory, placing it last in that factory's manual order. The
+	/// row's input/output overrides travel with it (they refer to the recipe, not the factory).
+	/// </summary>
+	public async Task MoveFactoryRecipeAsync(int factoryRecipeId, int targetFactoryId) {
+		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
+		if (factoryRecipe == null || factoryRecipe.FactoryId == targetFactoryId) {
+			return;
+		}
+		var maxSorting = await m_context.FactoryRecipes
+			.Where(r => r.FactoryId == targetFactoryId && r.IsActive)
+			.MaxAsync(r => (double?)r.Sorting) ?? -1;
+		factoryRecipe.FactoryId = targetFactoryId;
+		factoryRecipe.Sorting = maxSorting + 1;
+		await m_context.SaveChangesAsync();
+	}
+
 	public async Task RemoveFactoryRecipeAsync(int factoryRecipeId) {
 		var factoryRecipe = await m_context.FactoryRecipes.FindAsync(factoryRecipeId);
 		if (factoryRecipe != null) {

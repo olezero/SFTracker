@@ -143,11 +143,14 @@
 	<RecipeHoverCard Recipe="tipRecipe" HighlightPartId="tipPartId" Top="tipTop" Left="tipLeft" FluidDivisor="FluidDivisor" />
 }
 
-<RecipeEditorModal @ref="editRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnRecipeEdited" />
+<RecipeEditorModal @ref="editRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnRecipeEdited"
+	Factories="@Factories.Where(f => f.Id != SelectedFactory.Id)" OnMove="OnRecipeMoved" />
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = [];
+	/// <summary>All factories of the game; the editor modal offers the others as move targets.</summary>
+	[Parameter] public List<Factory> Factories { get; set; } = [];
 	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
 
@@ -260,6 +263,12 @@
 			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, args.multiplier, args.isSlooped, args.recipeId);
 			await OnRecipeChanged.InvokeAsync();
 		}
+	}
+
+	private async Task OnRecipeMoved((int factoryRecipeId, int targetFactoryId) args)
+	{
+		await FactoryService.MoveFactoryRecipeAsync(args.factoryRecipeId, args.targetFactoryId);
+		await OnRecipeChanged.InvokeAsync();
 	}
 
 	// "perMachine × multiplier [× 2] = total" laid out in fixed-width columns so the rows of a

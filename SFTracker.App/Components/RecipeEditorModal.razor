@@ -68,6 +68,23 @@
 		}
 	</BodyTemplate>
 	<FooterTemplate>
+		@if (isEditMode && Factories.Any())
+		{
+			@* Move the row to another factory in the game. Only offered when editing an existing row. *@
+			<div class="d-flex align-items-center me-auto">
+				<label for="moveToFactory" class="form-label mb-0 me-2 text-nowrap">Move to</label>
+				<select id="moveToFactory" class="form-select form-select-sm me-2" style="width: 220px;" @onchange="OnMoveTargetChange">
+					<option value="">Select factory…</option>
+					@foreach (var factory in Factories)
+					{
+						<option value="@factory.Id" selected="@(moveTargetFactoryId == factory.Id)">@factory.Name</option>
+					}
+				</select>
+				<Button Color="ButtonColor.Warning" Size="ButtonSize.Small" @onclick="Move" Disabled="@(moveTargetFactoryId == null)">
+					<i class="bi bi-box-arrow-right"></i> Move
+				</Button>
+			</div>
+		}
 		<Button Color="ButtonColor.Secondary" @onclick="HideModal">Cancel</Button>
 		<Button Color="ButtonColor.Primary" @onclick="Save" Disabled="@(multiplier <= 0)">@(isEditMode ? "Save" : "Add")</Button>
 	</FooterTemplate>
@@ -76,6 +93,10 @@
 @code {
 	[Parameter] public IEnumerable<DbRecipe> Recipes { get; set; } = [];
 	[Parameter] public int FluidDivisor { get; set; } = 1;
+	/// <summary>Factories the edited row can be moved to (the current one excluded). Empty hides the move controls.</summary>
+	[Parameter] public IEnumerable<Factory> Factories { get; set; } = [];
+	/// <summary>Fires when the user moves the edited row to another factory: (factoryRecipeId, targetFactoryId).</summary>
+	[Parameter] public EventCallback<(int factoryRecipeId, int targetFactoryId)> OnMove { get; set; }
 	/// <summary>Fires on Save. factoryRecipeId is the edited row in edit mode and null in add mode.</summary>
 	[Parameter] public EventCallback<(int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId)> OnSave { get; set; }
 
@@ -86,6 +107,7 @@
 	private Modal modal = default!;
 	private bool isEditMode;
 	private int? factoryRecipeId;
+	private int? moveTargetFactoryId;
 	private DbRecipe? currentRecipe;
 	private double multiplier = 1.0;
 	private bool isSlooped;
@@ -109,6 +131,7 @@
 		int? inputToHighlight, int? outputToHighlight, bool multiplierToHighlight) {
 		isEditMode = editFactoryRecipeId != null;
 		factoryRecipeId = editFactoryRecipeId;
+		moveTargetFactoryId = null;
 		currentRecipe = recipe;
 		multiplier = initialMultiplier;
 		isSlooped = initialIsSlooped;
@@ -196,6 +219,18 @@
 		if (e.Key == "Enter") {
 			await Save();
 		}
+	}
+
+	private void OnMoveTargetChange(ChangeEventArgs e) {
+		moveTargetFactoryId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+	}
+
+	private async Task Move() {
+		if (factoryRecipeId is not int id || moveTargetFactoryId is not int targetId) {
+			return;
+		}
+		await OnMove.InvokeAsync((id, targetId));
+		await HideModal();
 	}
 
 	private async Task Save() {

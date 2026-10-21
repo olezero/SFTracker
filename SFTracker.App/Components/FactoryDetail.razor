@@ -17,7 +17,7 @@
 	{
 		@* Body scrolls (recipes + manual inputs/outputs); the add forms stay pinned in the footer. *@
 		<div class="card-body">
-			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" FluidDivisor="@FluidDivisor"
+			<RecipeSection SelectedFactory="@SelectedFactory" AllRecipes="@AllRecipes" Factories="@Factories" FluidDivisor="@FluidDivisor"
 				OnRecipeChanged="@OnChanged" />
 			<CustomInputOutput SelectedFactory="@SelectedFactory" AllParts="@AllParts" OnChanged="@OnChanged" />
 		</div>
@@ -39,6 +39,8 @@
 	[Parameter] public Factory? SelectedFactory { get; set; }
 	[Parameter] public List<DbPart> AllParts { get; set; } = [];
 	[Parameter] public List<DbRecipe> AllRecipes { get; set; } = [];
+	/// <summary>All factories of the game (for moving recipes between them).</summary>
+	[Parameter] public List<Factory> Factories { get; set; } = [];
 	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnShowUpdateFactoryModal { get; set; }
 	[Parameter] public EventCallback OnDeleteSelectedFactory { get; set; }

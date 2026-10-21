@@ -157,6 +157,28 @@ public class FactoryServiceTests {
 	}
 
 	[Test]
+	public async Task Moving_a_recipe_appends_it_to_the_target_factory_and_keeps_overrides() {
+		var source = await m_service.CreateFactoryAsync("Source", m_game.Id);
+		var target = await m_service.CreateFactoryAsync("Target", m_game.Id);
+		var ingot = await RecipeAsync("Iron Ingot");
+		var plate = await RecipeAsync("Iron Plate");
+		await m_service.AddFactoryRecipeAsync(target.Id, plate.Id, 1);
+		var moved = await m_service.AddFactoryRecipeAsync(source.Id, ingot.Id, 2);
+		await m_service.ToggleRecipeInputAsync(moved.Id, ingot.Inputs.Single().Id);
+
+		await m_service.MoveFactoryRecipeAsync(moved.Id, target.Id);
+
+		var sourceAfter = (await m_service.GetFactoryByIdAsync(source.Id))!;
+		var targetAfter = (await m_service.GetFactoryByIdAsync(target.Id))!;
+		Assert.Multiple(() => {
+			Assert.That(sourceAfter.Recipes, Is.Empty);
+			Assert.That(targetAfter.Recipes.OrderBy(r => r.Sorting).Select(r => r.Id), Is.EqualTo(new[] { targetAfter.Recipes.Single(r => r.RecipeId == plate.Id).Id, moved.Id }));
+			Assert.That(targetAfter.Recipes.Single(r => r.Id == moved.Id).Multiplier, Is.EqualTo(2));
+			Assert.That(targetAfter.Recipes.Single(r => r.Id == moved.Id).IsInputEnabled(ingot.Inputs.Single().Id), Is.False);
+		});
+	}
+
+	[Test]
 	public async Task Deleting_a_factory_cascades_to_its_contents() {
 		var factory = await m_service.CreateFactoryAsync("F", m_game.Id);
 		var ingot = await RecipeAsync("Iron Ingot");

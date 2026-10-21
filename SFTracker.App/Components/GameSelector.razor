@@ -26,6 +26,10 @@
 	<button class="btn btn-secondary btn-sm" title="Import a game from JSON (as a new game)" @onclick="() => transferModals.ShowImportAsync()">
 		<i class="bi bi-box-arrow-in-down"></i> Import
 	</button>
+	<button class="btn btn-secondary btn-sm ms-2" title="Manage this game's networks" disabled="@(SelectedGame == null)"
+		@onclick="() => networkModal.ShowAsync()">
+		<i class="bi bi-diagram-3"></i> Networks
+	</button>
 
 	<label class="text-muted mb-0 ms-4" for="fluidDivisor" title="Fluid-scaling mod: every fluid amount in every recipe is divided by this">
 		<i class="bi bi-droplet"></i> Fluids ÷
@@ -45,6 +49,7 @@
 
 <SettingsModal @ref="settingsModal" />
 <GameTransferModals @ref="transferModals" OnImported="OnGameImported" />
+<NetworkManagerModal @ref="networkModal" GameId="@(SelectedGame?.Id ?? 0)" Networks="@Networks" Factories="@Factories" OnChanged="@OnNetworksChanged" />
 
 <Modal @ref="createModal" Title="New Game">
 	<BodyTemplate>
@@ -80,11 +85,17 @@
 	[Parameter] public EventCallback<Game?> SelectedGameChanged { get; set; }
 	[Parameter] public EventCallback<(Game game, string operation)> OnGameOperation { get; set; }
 	[Parameter] public EventCallback<int> FluidDivisorChanged { get; set; }
+	/// <summary>The selected game's networks and factories, shown in the network manager modal.</summary>
+	[Parameter] public List<Network> Networks { get; set; } = [];
+	[Parameter] public List<Factory> Factories { get; set; } = [];
+	/// <summary>A network was created, renamed or deleted; the owner reloads factories and networks.</summary>
+	[Parameter] public EventCallback OnNetworksChanged { get; set; }
 
 	private Modal createModal = default!;
 	private Modal renameModal = default!;
 	private SettingsModal settingsModal = default!;
 	private GameTransferModals transferModals = default!;
+	private NetworkManagerModal networkModal = default!;
 	private string editName = "";
 
 	private async Task OnSelectChanged(ChangeEventArgs e)

@@ -4,7 +4,8 @@
 @inject UserSettingsService UserSettings
 
 <GameSelector Games="@games" SelectedGame="@selectedGame" SelectedGameChanged="@OnGameSelected"
-	OnGameOperation="@OnGameOperation" FluidDivisorChanged="@OnFluidDivisorChanged" />
+	OnGameOperation="@OnGameOperation" FluidDivisorChanged="@OnFluidDivisorChanged"
+	Networks="@networks" Factories="@factories" OnNetworksChanged="@LoadDataAndRefreshBalance" />
 
 @* The three cards sit in a Gridstack grid; see DashboardGrid. The wrappers are static on purpose. *@
 <DashboardGrid>

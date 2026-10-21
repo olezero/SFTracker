@@ -44,7 +44,7 @@ dotnet test                               # NUnit tests in SFTracker.Tests
 - `Factory` has many `FactoryInput` / `FactoryOutput` (manual, user-entered amounts) and many `FactoryRecipe`. `Factory.Sorting` (double) is the manual list order.
 - `FactoryRecipe` is the pivot between a `Factory` and a `DbRecipe`, carrying `Multiplier` (number of machine-equivalents, e.g. 10 machines at 250% = 25), `IsSlooped` (doubles output), `IsActive`, and `Sorting` (manual order within the factory; ties fall back to `Id`).
 - `FactoryRecipeInputOverride` / `FactoryRecipeOutputOverride` implement per-recipe toggling of whether a specific input/output counts toward the balance. **Absence of an override = enabled** (see `FactoryRecipe.IsInputEnabled`/`IsOutputEnabled` defaulting to `true`). Toggling (`FactoryService.ToggleRecipeInput/OutputAsync`) creates a `IsEnabled=false` override, then flips it thereafter. Switching a row to another recipe drops its overrides.
-- `Network` groups factories within a game (`Factory.NetworkId` nullable FK, at most one network per factory). `NetworkService` is the CRUD seam; a factory's network is set in the `FactoryList` edit modal (which can also create a new network inline) via `FactoryService.UpdateFactoryAsync`, and `ResourceBalance` offers each network as a scope (`network:<id>` selector value) that balances its member factories as one unit. Networks are shown as a small label under the factory name in `FactoryList`. There is no rename/delete UI for networks yet (the service supports both).
+- `Network` groups factories within a game (`Factory.NetworkId` nullable FK, at most one network per factory). `NetworkService` is the CRUD seam; a factory's network is set in the `FactoryList` edit modal (which can also create a new network inline) via `FactoryService.UpdateFactoryAsync`, and `ResourceBalance` offers each network as a scope (`network:<id>` selector value) that balances its member factories as one unit. Networks are shown as a small label under the factory name in `FactoryList`. Create/rename/delete lives in `NetworkManagerModal` (the "Networks" button in the `GameSelector` bar), which shows members read-only; membership is only set in the factory edit modal.
 
 **Rate calculation** lives on the entities, not a service: `DbRecipeInput/Output.GetQuantityPerMinute(...)` = `Quantity * Multiplier / Recipe.TimeSeconds * 60`, with output ×2 when slooped. Any per-minute number in the UI comes from these methods.
 
@@ -71,8 +71,8 @@ dotnet test                               # NUnit tests in SFTracker.Tests
 - Private instance fields in services use the `m_` prefix (`m_context`, `m_gameData`); component-local fields in `.razor` use plain camelCase. **Local functions are camelCase** (`balanceFor`, `tryParse`), not PascalCase: the `.editorconfig` naming rules treat them as "everything else". `dotnet format -v d` reports violations as IDE1006 warnings; run it after adding code.
 - FICSMAS (holiday event) parts/recipes are filtered out of queries by name — preserve the `!Name.Contains("FICSMAS")` filters when adding recipe/part queries.
 - `DataImportService` skips recipes whose `BatchTime` contains `/` (fractional times) — a known gap noted in code.
-- Commits are mostly `wip`; don't commit unless asked.
+- Commits are mostly `wip`. Never commit or push on your own: after a change, stop and let the user verify it in the app first; commit + push only when they explicitly give the go-ahead.
 
 ## Ideas not yet implemented
 
-A per-recipe machine-tier dropdown (the machine data is already in `game_data.json`/`GameInfoService`) and a rename/delete UI for networks (`NetworkService` already supports both).
+A per-recipe machine-tier dropdown (the machine data is already in `game_data.json`/`GameInfoService`).

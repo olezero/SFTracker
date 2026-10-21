@@ -1,0 +1,128 @@
+@implements IDisposable
+@inject NetworkService NetworkService
+
+@* Create / rename / delete the networks of the selected game. Membership (which factories belong to a
+   network) is set per factory in the FactoryList edit modal, so this only shows members read-only. *@
+<Modal @ref="modal" Title="Networks" Size="ModalSize.Large">
+	<BodyTemplate>
+		<div class="input-group input-group-sm mb-3">
+			<input type="text" class="form-control" placeholder="New network name" @bind="newName" @bind:event="oninput"
+				@onkeydown="OnNewNameKeyDown">
+			<Button Color="ButtonColor.Primary" Size="ButtonSize.Small" @onclick="Create" Disabled="@string.IsNullOrWhiteSpace(newName)">
+				<i class="bi bi-plus"></i> Add
+			</Button>
+		</div>
+		@if (Networks.Count == 0)
+		{
+			<p class="text-muted mb-0">No networks yet. Factories in the same network are balanced together in the Resource Balance panel.</p>
+		}
+		else
+		{
+			<table class="table table-dark table-sm align-middle mb-0">
+				<thead>
+					<tr>
+						<th style="width: 40%;">Name</th>
+						<th>Factories</th>
+						<th style="width: 1%;"></th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var network in Networks)
+					{
+						var members = Factories.Where(f => f.NetworkId == network.Id).Select(f => f.Name).ToList();
+						<tr>
+							<td>
+								@* Renames save on Enter or when the field loses focus (both fire the change event). *@
+								<input type="text" class="form-control form-control-sm" value="@network.Name"
+									@onchange="e => Rename(network, e)">
+							</td>
+							<td class="text-muted small">
+								@(members.Count == 0 ? "—" : string.Join(", ", members))
+							</td>
+							<td>
+								<button class="btn btn-sm @(pendingDeleteId == network.Id ? "btn-danger" : "btn-outline-danger")"
+									title="@(pendingDeleteId == network.Id ? "Click again to confirm" : "Delete network (its factories are kept)")"
+									@onclick="() => HandleDeleteClick(network.Id)">
+									<i class="bi @(pendingDeleteId == network.Id ? "bi-check-lg" : "bi-trash")"></i>
+								</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="() => modal.HideAsync()">Close</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+	[Parameter] public int GameId { get; set; }
+	[Parameter] public List<Network> Networks { get; set; } = [];
+	[Parameter] public List<Factory> Factories { get; set; } = [];
+	/// <summary>Fires after any create/rename/delete so the owner reloads factories and networks.</summary>
+	[Parameter] public EventCallback OnChanged { get; set; }
+
+	private const int DeleteConfirmationSeconds = 3;
+
+	private Modal modal = default!;
+	private string newName = "";
+	private int? pendingDeleteId;
+	private System.Threading.Timer? deleteConfirmationTimer;
+
+	public Task ShowAsync() {
+		newName = "";
+		CancelPendingDelete();
+		return modal.ShowAsync();
+	}
+
+	private async Task Create() {
+		if (string.IsNullOrWhiteSpace(newName)) {
+			return;
+		}
+		await NetworkService.CreateNetworkAsync(newName, GameId);
+		newName = "";
+		await OnChanged.InvokeAsync();
+	}
+
+	private async Task OnNewNameKeyDown(KeyboardEventArgs e) {
+		if (e.Key == "Enter") {
+			await Create();
+		}
+	}
+
+	private async Task Rename(Network network, ChangeEventArgs e) {
+		var name = e.Value?.ToString()?.Trim() ?? "";
+		if (string.IsNullOrWhiteSpace(name) || name == network.Name) {
+			return;
+		}
+		await NetworkService.RenameNetworkAsync(network.Id, name);
+		await OnChanged.InvokeAsync();
+	}
+
+	private async Task HandleDeleteClick(int networkId) {
+		if (pendingDeleteId == networkId) {
+			CancelPendingDelete();
+			await NetworkService.DeleteNetworkAsync(networkId);
+			await OnChanged.InvokeAsync();
+			return;
+		}
+		pendingDeleteId = networkId;
+		deleteConfirmationTimer?.Dispose();
+		deleteConfirmationTimer = new System.Threading.Timer(_ => {
+			pendingDeleteId = null;
+			InvokeAsync(StateHasChanged);
+		}, null, TimeSpan.FromSeconds(DeleteConfirmationSeconds), Timeout.InfiniteTimeSpan);
+	}
+
+	private void CancelPendingDelete() {
+		pendingDeleteId = null;
+		deleteConfirmationTimer?.Dispose();
+		deleteConfirmationTimer = null;
+	}
+
+	public void Dispose() {
+		deleteConfirmationTimer?.Dispose();
+	}
+}

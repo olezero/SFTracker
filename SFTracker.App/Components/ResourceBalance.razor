@@ -4,14 +4,15 @@
 <div class="card">
 	<div class="card-header d-flex justify-content-between align-items-center">
 		<h5 class="mb-0">Resource Balance</h5>
-		@* Scope: everything, one network, or one factory. A factory in a network can also be
-		   viewed through its network: its own parts, but with the network's totals. *@
+		@* Scope: everything, one network, or one factory. By default a factory's parts the rest of
+		   its network touches, and parts marked as imported from the world, get the network's /
+		   all factories' totals; "Local only" shows just the scope's own numbers. *@
 		<div class="d-flex align-items-center gap-3">
-			@if (ScopedNetworkId() != null)
+			@if (selectedScope != AllScope)
 			{
-				<div class="form-check form-switch mb-0" title="Show this factory's parts with the whole network's production and consumption, as if supplied through the network">
-					<input class="form-check-input" type="checkbox" id="balance-network-view" @bind="networkView" @bind:after="Recalculate">
-					<label class="form-check-label text-nowrap" for="balance-network-view"><small>Network view</small></label>
+				<div class="form-check form-switch mb-0" title="Show only this scope's own production and consumption, ignoring the network and world parts">
+					<input class="form-check-input" type="checkbox" id="balance-local-only" @bind="localOnly" @bind:after="Recalculate">
+					<label class="form-check-label text-nowrap" for="balance-local-only"><small>Local only</small></label>
 				</div>
 			}
 			<select class="form-select form-select-sm" @bind="selectedScope" @bind:after="Recalculate">
@@ -118,8 +119,8 @@
 	private const string AllScope = "all";
 	private const string NetworkScopePrefix = "network:";
 	private string selectedScope = AllScope;
-	// When a networked factory is selected: show its parts with the network's totals instead of its own.
-	private bool networkView = true;
+	// Just the scope's own numbers: no "Network" or "World" sections.
+	private bool localOnly;
 
 	private List<Factory> factories = [];
 	private List<Network> networks = [];
@@ -199,7 +200,7 @@
 		var scoped = ScopedFactories().ToList();
 		partBalances = BalanceCalculator.Calculate(scoped, FluidDivisor);
 		rowSources = partBalances.ToDictionary(p => p.Part.Id, _ => RowSource.Own);
-		if (networkView && ScopedNetworkId() is int networkId) {
+		if (!localOnly && ScopedNetworkId() is int networkId) {
 			// The factory's rows, but each taken from the network-wide balance: a part the network
 			// supplies shows the network's surplus/deficit rather than this factory's own. Rows whose
 			// numbers changed are listed under a "Network" divider.
@@ -216,7 +217,7 @@
 		}
 		// Parts the scoped factories import from the world take the all-factories totals instead
 		// (pointless when the scope already is all factories). Wins over the network section.
-		var worldPartIds = selectedScope == AllScope
+		var worldPartIds = localOnly || selectedScope == AllScope
 			? new HashSet<int>()
 			: scoped.SelectMany(f => f.WorldParts).Select(w => w.PartId).ToHashSet();
 		if (worldPartIds.Count > 0) {

@@ -7,7 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-	.AddInteractiveServerComponents();
+	.AddInteractiveServerComponents()
+	// Browser -> server messages carry whole textarea values; the 32 KB default kills the circuit
+	// (silently, at debug log level) when a game export is pasted into the import modal.
+	.AddHubOptions(options => options.MaximumReceiveMessageSize = 16 * 1024 * 1024);
 
 // Configure host shutdown timeout for immediate shutdown
 builder.Services.Configure<HostOptions>(options => {

@@ -75,7 +75,7 @@
 								<button type="button" class="btn btn-outline-secondary"
 									title="@(isEnabled ? "Hide from balance calculation" : "Show in balance calculation")"
 									@onclick="() => ToggleRecipeInput(factoryRecipe.Id, input.Id)">
-									<i class="bi @(isEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+									<i class="bi @(isEnabled ? "bi-eye" : "bi-eye-slash")"></i>
 								</button>
 							</div>
 						</div>
@@ -115,7 +115,7 @@
 								<button type="button" class="btn btn-outline-secondary"
 									title="@(isEnabled ? "Hide from balance calculation" : "Show in balance calculation")"
 									@onclick="() => ToggleRecipeOutput(factoryRecipe.Id, output.Id)">
-									<i class="bi @(isEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+									<i class="bi @(isEnabled ? "bi-eye" : "bi-eye-slash")"></i>
 								</button>
 							</div>
 						</div>

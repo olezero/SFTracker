@@ -73,6 +73,24 @@
 					}
 				</div>
 			</div>
+			@* Clock speed helper: how to split the multiplier across real machines. Pure calculator,
+			   nothing here is saved. Typing a machine count gives the clock, typing a clock gives the count. *@
+			<hr class="my-3">
+			<div class="d-flex align-items-center flex-wrap gap-2 small">
+				<span class="text-muted me-1" title="Helper only: nothing here is saved. The multiplier above is the number of machine-equivalents.">
+					<i class="bi bi-calculator"></i> Clock speed
+				</span>
+				<input type="text" inputmode="decimal" class="form-control form-control-sm" style="width: 110px;"
+					value="@machinesText" @oninput="OnMachinesChange" title="Number of machines. @ExpressionHint">
+				<span>machines at</span>
+				<input type="text" inputmode="decimal" class="form-control form-control-sm @(ClockCalculator.IsValidClock(clockPercent) ? "" : "is-invalid")" style="width: 110px;"
+					value="@clockText" @oninput="OnClockChange" title="Clock speed per machine. @ExpressionHint">
+				<span>% each</span>
+				@if (!ClockCalculator.IsValidClock(clockPercent))
+				{
+					<span class="text-danger">Clock speed must be between @ClockCalculator.MinClockPercent% and @ClockCalculator.MaxClockPercent%</span>
+				}
+			</div>
 			</div>
 		}
 	</BodyTemplate>
@@ -133,6 +151,14 @@
 	private readonly Dictionary<int, string> inputTexts = [];
 	private readonly Dictionary<int, string> outputTexts = [];
 
+	// Clock speed helper. The machine count follows ClockCalculator.SuggestMachineCount until the
+	// user types a count or clock themselves, after which it is kept across multiplier edits.
+	private string machinesText = "1";
+	private string clockText = "100";
+	private double machines = 1;
+	private double clockPercent = 100;
+	private bool machinesEdited;
+
 	// Field to highlight and focus when the modal opens.
 	private int? highlightInputId;
 	private int? highlightOutputId;
@@ -157,6 +183,7 @@
 		highlightInputId = inputToHighlight;
 		highlightOutputId = outputToHighlight;
 		highlightMultiplier = multiplierToHighlight;
+		machinesEdited = false;
 		RecalculateRates();
 		StateHasChanged();
 		await modal.ShowAsync();
@@ -166,6 +193,7 @@
 		currentRecipe = recipe;
 		multiplier = 1.0;
 		isSlooped = false;
+		machinesEdited = false;
 		RecalculateRates();
 	}
 
@@ -183,6 +211,34 @@
 		foreach (var output in currentRecipe.Outputs) {
 			outputTexts[output.Id] = FormatNumber(output.GetQuantityPerMinute(multiplier, isSlooped, FluidDivisor));
 		}
+		if (!machinesEdited) {
+			machines = ClockCalculator.SuggestMachineCount(multiplier);
+			machinesText = FormatNumber(machines);
+		}
+		clockPercent = ClockCalculator.ClockPercent(multiplier, machines);
+		clockText = FormatNumber(clockPercent);
+	}
+
+	private void OnMachinesChange(ChangeEventArgs e) {
+		var text = e.Value?.ToString() ?? "";
+		if (ExpressionEvaluator.TryEvaluate(text, out var value) && value > 0) {
+			machines = value;
+			machinesEdited = true;
+			clockPercent = ClockCalculator.ClockPercent(multiplier, machines);
+			clockText = FormatNumber(clockPercent);
+		}
+		machinesText = text;
+	}
+
+	private void OnClockChange(ChangeEventArgs e) {
+		var text = e.Value?.ToString() ?? "";
+		if (ExpressionEvaluator.TryEvaluate(text, out var value) && value > 0) {
+			clockPercent = value;
+			machines = ClockCalculator.MachinesAt(multiplier, clockPercent);
+			machinesEdited = true;
+			machinesText = FormatNumber(machines);
+		}
+		clockText = text;
 	}
 
 	private void OnMultiplierChange(ChangeEventArgs e) {

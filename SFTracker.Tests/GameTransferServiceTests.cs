@@ -42,6 +42,7 @@ public class GameTransferServiceTests {
 		await factories.ToggleRecipeOutputAsync(slooped.Id, ingot.Outputs.Single().Id);
 		var plates = await factories.AddFactoryRecipeAsync(smelting.Id, plate.Id, 1);
 		await factories.ReorderFactoryRecipesAsync([plates.Id, slooped.Id]);
+		await factories.ToggleWorldPartAsync(smelting.Id, ore.Id);
 
 		await factories.CreateFactoryAsync("Unassigned", game.Id);
 		return game;
@@ -71,6 +72,7 @@ public class GameTransferServiceTests {
 			Assert.That(smelting.Recipes[1].IsSlooped, Is.True);
 			Assert.That(smelting.Recipes[1].DisabledInputs, Is.EqualTo(new[] { "Iron Ore" }));
 			Assert.That(smelting.Recipes[1].DisabledOutputs, Is.EqualTo(new[] { "Iron Ingot" }));
+			Assert.That(smelting.WorldParts, Is.EqualTo(new[] { "Iron Ore" }));
 			Assert.That(export.Factories.Single(f => f.Name == "Unassigned").Network, Is.Null);
 		});
 	}

@@ -38,9 +38,15 @@ public class Factory {
 	[InverseProperty(nameof(FactoryRecipe.Factory))]
 	public ICollection<FactoryRecipe> Recipes { get; set; } = [];
 
+	[InverseProperty(nameof(FactoryWorldPart.Factory))]
+	public ICollection<FactoryWorldPart> WorldParts { get; set; } = [];
+
 	[ForeignKey(nameof(GameId))]
 	public Game Game { get; set; } = null!;
 
 	[ForeignKey(nameof(NetworkId))]
 	public Network? Network { get; set; }
+
+	/// <summary>Whether this factory gets the part from outside its own network (see <see cref="FactoryWorldPart"/>).</summary>
+	public bool IsWorldPart(int partId) => WorldParts.Any(w => w.PartId == partId);
 }

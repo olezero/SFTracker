@@ -41,8 +41,17 @@
 							<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 								style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 							<span class="flex-grow-1">@input.Part.Name</span>
+							@if (Factory != null)
+							{
+								var isWorld = Factory.IsWorldPart(input.PartId);
+								<button type="button" class="btn btn-sm me-2 recipe-world-toggle @(isWorld ? "btn-info" : "btn-outline-secondary")"
+									title="@(isWorld ? "Imported from the world: the balance shows this part with the All Factories totals. Click to unmark." : "Mark as imported from the world (another factory or network): the balance then shows this part with the All Factories totals.")"
+									@onclick="() => OnToggleWorldPart.InvokeAsync(input.PartId)">
+									<i class="bi bi-globe"></i>
+								</button>
+							}
 							<input type="text" inputmode="decimal" id="@InputElementId(input.Id)"
-								class="form-control ms-2 form-control-sm @(highlightInputId == input.Id ? "border-info" : "")" style="width: 120px;"
+								class="form-control form-control-sm @(highlightInputId == input.Id ? "border-info" : "")" style="width: 120px;"
 								value="@inputTexts[input.Id]"
 								@oninput="e => OnInputChange(input, e)" title="@ExpressionHint">
 						</div>
@@ -99,6 +108,10 @@
 	[Parameter] public EventCallback<(int factoryRecipeId, int targetFactoryId)> OnMove { get; set; }
 	/// <summary>Fires on Save. factoryRecipeId is the edited row in edit mode and null in add mode.</summary>
 	[Parameter] public EventCallback<(int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId)> OnSave { get; set; }
+	/// <summary>The factory the recipe belongs to; enables the per-input "imported from the world" toggles.</summary>
+	[Parameter] public Factory? Factory { get; set; }
+	/// <summary>Fires when a world toggle is clicked, with the part id. The parent persists it; the toggle reflects <see cref="Factory"/>.</summary>
+	[Parameter] public EventCallback<int> OnToggleWorldPart { get; set; }
 
 	private const string MultiplierElementId = "recipe-editor-multiplier";
 	private static string InputElementId(int inputId) => $"recipe-editor-input-{inputId}";

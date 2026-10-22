@@ -48,16 +48,26 @@
 					</tr>
 				</thead>
 				<tbody>
-					@foreach (var part in VisibleRows(fromNetwork: false))
+					@foreach (var part in VisibleRows(RowSource.Own))
 					{
 						@BalanceRow(part)
 					}
-					@if (VisibleRows(fromNetwork: true).Any())
+					@if (VisibleRows(RowSource.Network).Any())
 					{
-						<tr class="balance-network-divider" title="Parts other factories in the network also produce or consume; totals are the network's, not this factory's own">
+						<tr class="balance-section-divider" title="Parts other factories in the network also produce or consume; totals are the network's, not this factory's own">
 							<td colspan="5"><small><i class="bi bi-diagram-3 me-1"></i>Network</small></td>
 						</tr>
-						@foreach (var part in VisibleRows(fromNetwork: true))
+						@foreach (var part in VisibleRows(RowSource.Network))
+						{
+							@BalanceRow(part)
+						}
+					}
+					@if (VisibleRows(RowSource.World).Any())
+					{
+						<tr class="balance-section-divider" title="Parts marked as imported from the world in the recipe editor; totals are those of all factories in the game">
+							<td colspan="5"><small><i class="bi bi-globe me-1"></i>World</small></td>
+						</tr>
+						@foreach (var part in VisibleRows(RowSource.World))
 						{
 							@BalanceRow(part)
 						}
@@ -114,8 +124,10 @@
 	private List<Factory> factories = [];
 	private List<Network> networks = [];
 	private List<PartBalance> partBalances = [];
-	// Network view: parts whose totals differ from this factory's own because other network members touch them.
-	private HashSet<int> networkPartIds = [];
+	// Where a row's totals come from. Own = the scope itself; Network = the factory's network (network
+	// view, when other members touch the part); World = all factories (parts marked FactoryWorldPart).
+	private enum RowSource { Own, Network, World }
+	private Dictionary<int, RowSource> rowSources = [];
 	private int lastGameId = -1;
 	private int lastFluidDivisor = -1;
 	private bool hasLoaded;
@@ -184,8 +196,9 @@
 
 	/// <summary>Recomputes the balance for the selected scope from the already loaded factories.</summary>
 	private void Recalculate() {
-		partBalances = BalanceCalculator.Calculate(ScopedFactories(), FluidDivisor);
-		networkPartIds = [];
+		var scoped = ScopedFactories().ToList();
+		partBalances = BalanceCalculator.Calculate(scoped, FluidDivisor);
+		rowSources = partBalances.ToDictionary(p => p.Part.Id, _ => RowSource.Own);
 		if (networkView && ScopedNetworkId() is int networkId) {
 			// The factory's rows, but each taken from the network-wide balance: a part the network
 			// supplies shows the network's surplus/deficit rather than this factory's own. Rows whose
@@ -194,16 +207,32 @@
 			partBalances = BalanceCalculator.Calculate(factories.Where(f => f.NetworkId == networkId), FluidDivisor)
 				.Where(p => own.ContainsKey(p.Part.Id))
 				.ToList();
-			networkPartIds = partBalances
-				.Where(p => Math.Abs(p.Production - own[p.Part.Id].Production) > DisplayConstants.BalanceThreshold
-					|| Math.Abs(p.Consumption - own[p.Part.Id].Consumption) > DisplayConstants.BalanceThreshold)
-				.Select(p => p.Part.Id)
-				.ToHashSet();
+			foreach (var p in partBalances) {
+				if (Math.Abs(p.Production - own[p.Part.Id].Production) > DisplayConstants.BalanceThreshold
+					|| Math.Abs(p.Consumption - own[p.Part.Id].Consumption) > DisplayConstants.BalanceThreshold) {
+					rowSources[p.Part.Id] = RowSource.Network;
+				}
+			}
+		}
+		// Parts the scoped factories import from the world take the all-factories totals instead
+		// (pointless when the scope already is all factories). Wins over the network section.
+		var worldPartIds = selectedScope == AllScope
+			? new HashSet<int>()
+			: scoped.SelectMany(f => f.WorldParts).Select(w => w.PartId).ToHashSet();
+		if (worldPartIds.Count > 0) {
+			var world = BalanceCalculator.Calculate(factories, FluidDivisor).ToDictionary(p => p.Part.Id);
+			for (var i = 0; i < partBalances.Count; i++) {
+				var partId = partBalances[i].Part.Id;
+				if (worldPartIds.Contains(partId) && world.TryGetValue(partId, out var worldBalance)) {
+					partBalances[i] = worldBalance;
+					rowSources[partId] = RowSource.World;
+				}
+			}
 		}
 	}
 
-	private IEnumerable<PartBalance> VisibleRows(bool fromNetwork) =>
-		partBalances.Where(p => networkPartIds.Contains(p.Part.Id) == fromNetwork && IsCategoryShown(p))
+	private IEnumerable<PartBalance> VisibleRows(RowSource source) =>
+		partBalances.Where(p => rowSources[p.Part.Id] == source && IsCategoryShown(p))
 			.OrderByDescending(p => p.Balance).ThenBy(p => p.Part.Name);
 
 	private RenderFragment BalanceRow(PartBalance part) {

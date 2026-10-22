@@ -76,6 +76,36 @@ public class FactoryServiceTests {
 	}
 
 	[Test]
+	public async Task World_parts_toggle_per_factory_and_are_loaded_with_details() {
+		var factory = await m_service.CreateFactoryAsync("Mine", m_game.Id);
+		var ore = await PartAsync("Iron Ore");
+
+		await m_service.ToggleWorldPartAsync(factory.Id, ore.Id);
+		// A fresh context, so nothing is served from (or later fixed up by) the change tracker.
+		await using (var freshContext = m_db.CreateContext()) {
+			var marked = (await new FactoryService(freshContext).GetAllFactoriesAsync(m_game.Id)).Single();
+			Assert.Multiple(() => {
+				Assert.That(marked.IsWorldPart(ore.Id), Is.True);
+				Assert.That(marked.WorldParts.Single().Part.Name, Is.EqualTo("Iron Ore"));
+			});
+		}
+
+		await m_service.ToggleWorldPartAsync(factory.Id, ore.Id);
+		var unmarked = (await m_service.GetAllFactoriesAsync(m_game.Id)).Single();
+		Assert.That(unmarked.WorldParts, Is.Empty);
+	}
+
+	[Test]
+	public async Task Deleting_a_factory_removes_its_world_parts() {
+		var factory = await m_service.CreateFactoryAsync("Mine", m_game.Id);
+		await m_service.ToggleWorldPartAsync(factory.Id, (await PartAsync("Iron Ore")).Id);
+
+		await m_service.DeleteFactoryAsync(factory.Id);
+
+		Assert.That(await m_context.FactoryWorldParts.CountAsync(), Is.Zero);
+	}
+
+	[Test]
 	public async Task Update_sets_name_and_network() {
 		var factory = await m_service.CreateFactoryAsync("Old", m_game.Id);
 		var network = await new NetworkService(m_context).CreateNetworkAsync("Copper", m_game.Id);

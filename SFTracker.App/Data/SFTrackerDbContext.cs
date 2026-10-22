@@ -19,4 +19,5 @@ public class SFTrackerDbContext(DbContextOptions<SFTrackerDbContext> options) : 
 	public DbSet<FactoryRecipe> FactoryRecipes { get; set; }
 	public DbSet<FactoryRecipeInputOverride> FactoryRecipeInputOverrides { get; set; }
 	public DbSet<FactoryRecipeOutputOverride> FactoryRecipeOutputOverrides { get; set; }
+	public DbSet<FactoryWorldPart> FactoryWorldParts { get; set; }
 }

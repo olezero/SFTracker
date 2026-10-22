@@ -47,6 +47,8 @@ public class GameTransferService {
 		public List<AmountExport> Inputs { get; set; } = [];
 		public List<AmountExport> Outputs { get; set; } = [];
 		public List<FactoryRecipeExport> Recipes { get; set; } = [];
+		/// <summary>Part names the factory gets from outside its network (see <see cref="FactoryWorldPart"/>).</summary>
+		public List<string> WorldParts { get; set; } = [];
 	}
 
 	public class AmountExport {
@@ -83,6 +85,7 @@ public class GameTransferService {
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.Recipe)
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.InputOverrides).ThenInclude(o => o.RecipeInput).ThenInclude(ri => ri.Part)
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.OutputOverrides).ThenInclude(o => o.RecipeOutput).ThenInclude(ro => ro.Part)
+			.Include(f => f.WorldParts).ThenInclude(w => w.Part)
 			.OrderBy(f => f.Sorting).ThenBy(f => f.Id)
 			.AsSplitQuery()
 			.ToListAsync();
@@ -104,7 +107,8 @@ public class GameTransferService {
 					Sorting = r.Sorting,
 					DisabledInputs = r.InputOverrides.Where(o => !o.IsEnabled).Select(o => o.RecipeInput.Part.Name).OrderBy(n => n).ToList(),
 					DisabledOutputs = r.OutputOverrides.Where(o => !o.IsEnabled).Select(o => o.RecipeOutput.Part.Name).OrderBy(n => n).ToList()
-				}).ToList()
+				}).ToList(),
+				WorldParts = f.WorldParts.Select(w => w.Part.Name).OrderBy(n => n).ToList()
 			}).ToList()
 		};
 
@@ -146,9 +150,9 @@ public class GameTransferService {
 
 		var missing = new SortedSet<string>();
 		foreach (var f in export.Factories) {
-			foreach (var a in f.Inputs.Concat(f.Outputs)) {
-				if (!partsByName.ContainsKey(a.Part)) {
-					missing.Add($"part \"{a.Part}\"");
+			foreach (var name in f.Inputs.Concat(f.Outputs).Select(a => a.Part).Concat(f.WorldParts)) {
+				if (!partsByName.ContainsKey(name)) {
+					missing.Add($"part \"{name}\"");
 				}
 			}
 
@@ -201,6 +205,10 @@ public class GameTransferService {
 
 			foreach (var a in f.Outputs) {
 				factory.Outputs.Add(new FactoryOutput { PartId = partsByName[a.Part].Id, AmountPerMinute = a.AmountPerMinute });
+			}
+
+			foreach (var name in f.WorldParts.Distinct()) {
+				factory.WorldParts.Add(new FactoryWorldPart { PartId = partsByName[name].Id });
 			}
 
 			foreach (var r in f.Recipes) {

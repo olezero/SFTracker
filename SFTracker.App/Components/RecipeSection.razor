@@ -47,7 +47,13 @@
 								@onclick="() => ShowEditRecipeModal(factoryRecipe, input.Id, null)">
 								<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
-								<span class="me-2 flex-grow-1">@input.Part.Name</span>
+								<span class="me-2 flex-grow-1">
+									@input.Part.Name
+									@if (SelectedFactory.IsWorldPart(input.PartId))
+									{
+										<i class="bi bi-globe text-info ms-1" title="Imported from the world (see the recipe editor)"></i>
+									}
+								</span>
 								@RecipeRate(input.GetQuantityPerMinute(1, FluidDivisor), factoryRecipe.Multiplier, false,
 									input.GetQuantityPerMinute(factoryRecipe, FluidDivisor), isEnabled)
 							</div>
@@ -165,7 +171,8 @@
 }
 
 <RecipeEditorModal @ref="editRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnRecipeEdited"
-	Factories="@Factories.Where(f => f.Id != SelectedFactory.Id)" OnMove="OnRecipeMoved" />
+	Factories="@Factories.Where(f => f.Id != SelectedFactory.Id)" OnMove="OnRecipeMoved"
+	Factory="@SelectedFactory" OnToggleWorldPart="ToggleWorldPart" />
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
@@ -284,6 +291,12 @@
 			await FactoryService.UpdateFactoryRecipeAsync(factoryRecipeId, args.multiplier, args.isSlooped, args.recipeId);
 			await OnRecipeChanged.InvokeAsync();
 		}
+	}
+
+	private async Task ToggleWorldPart(int partId)
+	{
+		await FactoryService.ToggleWorldPartAsync(SelectedFactory.Id, partId);
+		await OnRecipeChanged.InvokeAsync();
 	}
 
 	private async Task OnRecipeMoved((int factoryRecipeId, int targetFactoryId) args)

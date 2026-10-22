@@ -10,30 +10,67 @@ namespace SFTracker.Services;
 /// See README.md ("Schema changes") for the procedure.
 /// </summary>
 public static class SchemaUpgrader {
-	/// <summary>Adds a column when the table does not have it yet. The definition is the SQLite column DDL.</summary>
-	private sealed record AddColumn(string Table, string Column, string Definition);
+	private abstract record Step;
 
-	// Append new steps at the end; never edit or remove an existing one. Only "add column" has been
-	// needed so far; a new table or a column rebuild would be a new step kind.
-	private static readonly AddColumn[] s_steps = [
-		new("Recipes", "Machine", "TEXT NOT NULL DEFAULT ''"),
+	/// <summary>Adds a column when the table does not have it yet. The definition is the SQLite column DDL.</summary>
+	private sealed record AddColumn(string Table, string Column, string Definition) : Step;
+
+	/// <summary>
+	/// Creates a table (and its indexes) when it does not exist yet. The statements must match what
+	/// EnsureCreated generates for a fresh file; SchemaUpgraderTests compares the two.
+	/// </summary>
+	private sealed record CreateTable(string Table, string[] Statements) : Step;
+
+	// Append new steps at the end; never edit or remove an existing one.
+	private static readonly Step[] s_steps = [
+		new AddColumn("Recipes", "Machine", "TEXT NOT NULL DEFAULT ''"),
+		new CreateTable("FactoryWorldParts", [
+			"CREATE TABLE \"FactoryWorldParts\" ("
+				+ "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_FactoryWorldParts\" PRIMARY KEY AUTOINCREMENT, "
+				+ "\"FactoryId\" INTEGER NOT NULL, "
+				+ "\"PartId\" INTEGER NOT NULL, "
+				+ "CONSTRAINT \"FK_FactoryWorldParts_Factories_FactoryId\" FOREIGN KEY (\"FactoryId\") REFERENCES \"Factories\" (\"Id\") ON DELETE CASCADE, "
+				+ "CONSTRAINT \"FK_FactoryWorldParts_Parts_PartId\" FOREIGN KEY (\"PartId\") REFERENCES \"Parts\" (\"Id\") ON DELETE CASCADE)",
+			"CREATE UNIQUE INDEX \"IX_FactoryWorldParts_FactoryId_PartId\" ON \"FactoryWorldParts\" (\"FactoryId\", \"PartId\")",
+			"CREATE INDEX \"IX_FactoryWorldParts_PartId\" ON \"FactoryWorldParts\" (\"PartId\")",
+		]),
 	];
 
 	/// <returns>The number of steps that were applied.</returns>
 	public static async Task<int> UpgradeAsync(SFTrackerDbContext context, ILogger? logger = null) {
 		var applied = 0;
 		foreach (var step in s_steps) {
-			if (await ColumnExistsAsync(context, step.Table, step.Column)) {
-				continue;
-			}
-			// A plain string on purpose: DDL cannot take parameters, and `dotnet format` rewrites an
+			// Plain strings on purpose: DDL cannot take parameters, and `dotnet format` rewrites an
 			// interpolated ExecuteSqlRaw call into the parameterised ExecuteSql (EF1002), which breaks it.
-			var sql = "ALTER TABLE \"" + step.Table + "\" ADD COLUMN \"" + step.Column + "\" " + step.Definition;
-			await context.Database.ExecuteSqlRawAsync(sql);
-			logger?.LogInformation("Schema upgrade: added column {Table}.{Column}.", step.Table, step.Column);
+			switch (step) {
+				case AddColumn column:
+					if (await ColumnExistsAsync(context, column.Table, column.Column)) {
+						continue;
+					}
+					var sql = "ALTER TABLE \"" + column.Table + "\" ADD COLUMN \"" + column.Column + "\" " + column.Definition;
+					await context.Database.ExecuteSqlRawAsync(sql);
+					logger?.LogInformation("Schema upgrade: added column {Table}.{Column}.", column.Table, column.Column);
+					break;
+				case CreateTable table:
+					if (await TableExistsAsync(context, table.Table)) {
+						continue;
+					}
+					foreach (var statement in table.Statements) {
+						await context.Database.ExecuteSqlRawAsync(statement);
+					}
+					logger?.LogInformation("Schema upgrade: created table {Table}.", table.Table);
+					break;
+			}
 			applied++;
 		}
 		return applied;
+	}
+
+	private static async Task<bool> TableExistsAsync(SFTrackerDbContext context, string table) {
+		var count = await context.Database
+			.SqlQuery<int>($"SELECT COUNT(*) AS \"Value\" FROM sqlite_master WHERE type = 'table' AND name = {table}")
+			.SingleAsync();
+		return count > 0;
 	}
 
 	private static async Task<bool> ColumnExistsAsync(SFTrackerDbContext context, string table, string column) {

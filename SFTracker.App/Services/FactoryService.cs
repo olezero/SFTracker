@@ -27,6 +27,7 @@ public class FactoryService {
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.Recipe).ThenInclude(r => r.Outputs).ThenInclude(ro => ro.Part)
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.InputOverrides)
 			.Include(f => f.Recipes.Where(r => r.IsActive)).ThenInclude(r => r.OutputOverrides)
+			.Include(f => f.WorldParts).ThenInclude(w => w.Part)
 			.AsSplitQuery();
 
 	public async Task<List<Factory>> GetAllFactoriesAsync(int gameId) {
@@ -245,6 +246,21 @@ public class FactoryService {
 			});
 		} else {
 			existing.IsEnabled = !existing.IsEnabled;
+		}
+		await m_context.SaveChangesAsync();
+	}
+
+	/// <summary>
+	/// Marks or unmarks a part as coming from outside the factory's network ("world"): the balance
+	/// then lists it with the all-factories totals. Per factory, so it covers every recipe using it.
+	/// </summary>
+	public async Task ToggleWorldPartAsync(int factoryId, int partId) {
+		var existing = await m_context.FactoryWorldParts
+			.FirstOrDefaultAsync(w => w.FactoryId == factoryId && w.PartId == partId);
+		if (existing == null) {
+			m_context.FactoryWorldParts.Add(new FactoryWorldPart { FactoryId = factoryId, PartId = partId });
+		} else {
+			m_context.FactoryWorldParts.Remove(existing);
 		}
 		await m_context.SaveChangesAsync();
 	}

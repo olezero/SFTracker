@@ -43,8 +43,12 @@ Rules:
   may already have been upgraded by it.
 - Match the DDL to what `EnsureCreated` would generate for a fresh file, so old and new files end up
   with the same schema.
-- A new table, or anything SQLite's `ALTER TABLE` cannot do (changing or dropping a column), needs a
-  new step kind in `SchemaUpgrader`. Keep it idempotent in the same way: check the live schema with
+- A new table is a `CreateTable` step: the `CREATE TABLE` and `CREATE INDEX` statements EF would
+  generate for it (see the `FactoryWorldParts` step for the shape). `SchemaUpgraderTests` drops the
+  table from a fresh database, runs the upgrader and compares the resulting schema with the original,
+  so a mismatch fails the tests.
+- Anything SQLite's `ALTER TABLE` cannot do (changing or dropping a column) needs a new step kind in
+  `SchemaUpgrader`. Keep it idempotent in the same way: check the live schema with
   `pragma_table_info` / `sqlite_master`, then apply.
 
 History: columns added before the upgrader existed (`FactoryRecipes.Sorting`, the `Games` table,

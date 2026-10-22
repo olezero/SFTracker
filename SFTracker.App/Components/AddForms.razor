@@ -51,7 +51,8 @@
 	</div>
 </div>
 
-<RecipeEditorModal @ref="addRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnAdvancedRecipeAdd" />
+<RecipeEditorModal @ref="addRecipeModal" Recipes="AllRecipes" FluidDivisor="@FluidDivisor" OnSave="OnAdvancedRecipeAdd"
+	Factory="@SelectedFactory" OnToggleWorldPart="ToggleWorldPart" />
 
 @code {
 	[Parameter] public Factory SelectedFactory { get; set; } = null!;
@@ -81,6 +82,11 @@
 	private async Task OnAdvancedRecipeAdd((int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId) args) {
 		await FactoryService.AddFactoryRecipeAsync(SelectedFactory.Id, args.recipeId, args.multiplier, args.isSlooped);
 		newRecipe = null;
+		await OnAdded.InvokeAsync();
+	}
+
+	private async Task ToggleWorldPart(int partId) {
+		await FactoryService.ToggleWorldPartAsync(SelectedFactory.Id, partId);
 		await OnAdded.InvokeAsync();
 	}
 

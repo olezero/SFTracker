@@ -26,6 +26,12 @@
 			</div>
 			<Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="ResetLayout" Disabled="@(saving || UserSettings.Settings.Layout == null)">Reset layout</Button>
 		</div>
+		<hr>
+		<div class="form-check form-switch">
+			<input class="form-check-input" type="checkbox" id="followFactorySelection" @bind="followFactorySelection" @bind:after="SaveFollowFactorySelection" disabled="@saving">
+			<label class="form-check-label" for="followFactorySelection">Resource balance follows the selected factory</label>
+			<div class="form-text mt-0">Selecting a factory in the list also selects it as the balance scope. Applies immediately.</div>
+		</div>
 		@if (error != null)
 		{
 			<div class="alert alert-danger mt-3 mb-0 py-2">@error</div>
@@ -40,12 +46,14 @@
 @code {
 	private Modal modal = default!;
 	private string databasePath = "";
+	private bool followFactorySelection;
 	private string? error;
 	private bool saving;
 
 	public async Task ShowAsync()
 	{
 		databasePath = UserSettings.Settings.DatabasePath ?? "";
+		followFactorySelection = UserSettings.Settings.FollowFactorySelection;
 		error = null;
 		saving = false;
 		await modal.ShowAsync();
@@ -71,7 +79,7 @@
 		var previous = UserSettings.Settings;
 		try
 		{
-			await UserSettings.SaveAsync(new UserSettings { DatabasePath = databasePath, Layout = previous.Layout });
+			await UserSettings.UpdateAsync(s => s.DatabasePath = databasePath);
 			// Create/seed the database at the new location; if that fails, put the old settings back
 			// so the app still starts next time.
 			await DatabaseInitializer.InitializeAsync(Services);
@@ -87,6 +95,9 @@
 		// Existing circuits still hold a DbContext on the old file; a full reload starts a fresh one.
 		Navigation.NavigateTo("/", forceLoad: true);
 	}
+
+	private Task SaveFollowFactorySelection() =>
+		UserSettings.UpdateAsync(s => s.FollowFactorySelection = followFactorySelection);
 
 	private async Task ResetLayout()
 	{

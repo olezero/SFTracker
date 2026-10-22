@@ -133,6 +133,9 @@
 
 	private void OnFactorySelected(Factory? factory) {
 		selectedFactory = factory;
+		if (factory != null && UserSettings.Settings.FollowFactorySelection) {
+			resourceBalance?.SelectFactoryScope(factory.Id);
+		}
 	}
 
 	private async Task OnFactoryListChanged() {

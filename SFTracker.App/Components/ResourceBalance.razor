@@ -171,6 +171,17 @@
 		StateHasChanged();
 	}
 
+	/// <summary>Switches the scope to one factory (UserSettings.FollowFactorySelection); ignored for unknown ids.</summary>
+	public void SelectFactoryScope(int factoryId) {
+		var scope = factoryId.ToString();
+		if (scope == selectedScope || !IsValidScope(scope)) {
+			return;
+		}
+		selectedScope = scope;
+		Recalculate();
+		StateHasChanged();
+	}
+
 	/// <summary>Recomputes the balance for the selected scope from the already loaded factories.</summary>
 	private void Recalculate() {
 		partBalances = BalanceCalculator.Calculate(ScopedFactories(), FluidDivisor);

@@ -21,6 +21,11 @@ public class UserSettings {
 	/// <see cref="DashboardLayout.Columns"/> can be rescaled on load. Missing = the original 12.
 	/// </summary>
 	public int? LayoutColumns { get; set; }
+
+	/// <summary>Selecting a factory in the factory list also selects it as the resource balance scope.</summary>
+	public bool FollowFactorySelection { get; set; }
+
+	public UserSettings Clone() => (UserSettings)MemberwiseClone();
 }
 
 /// <summary>
@@ -89,6 +94,13 @@ public class UserSettingsService {
 		}
 	}
 
+	/// <summary>Applies a change to a copy of the current settings and saves it, keeping everything else.</summary>
+	public Task UpdateAsync(Action<UserSettings> change) {
+		var settings = Settings.Clone();
+		change(settings);
+		return SaveAsync(settings);
+	}
+
 	/// <summary>
 	/// Saves only the dashboard layout (null = back to defaults), keeping the other settings. Skips the
 	/// write when nothing changed, so spurious grid events don't touch the file.
@@ -97,7 +109,7 @@ public class UserSettingsService {
 		if (SameLayout(Settings.Layout, layout)) {
 			return Task.CompletedTask;
 		}
-		return SaveAsync(new UserSettings { DatabasePath = Settings.DatabasePath, Layout = layout });
+		return UpdateAsync(s => s.Layout = layout);
 	}
 
 	private static bool SameLayout(Dictionary<string, CardLayout>? a, Dictionary<string, CardLayout>? b) {

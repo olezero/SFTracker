@@ -91,8 +91,48 @@ a, .btn-link {
     border-color: var(--bs-primary) !important;
 }
 
+/* Factory drag-and-drop: the .list-group-item's padding moves onto the row so a click anywhere in
+   the row (not just on the text) selects; only the grip icon drags (see .recipe-sortable below). */
+.factory-sortable .list-group-item {
+    padding: 0;
+}
+
+/* The rows sit directly on the card body (card-body p-0), so drop the list's own frame: no
+   rounded corners, no side borders, and only separators between rows. */
+.factory-sortable .list-group {
+    border-radius: 0;
+}
+
+.factory-sortable .list-group-item {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+}
+
+.factory-sortable .list-group-item:first-child {
+    border-top: 0;
+}
+
+.factory-sortable .list-group-item:last-child {
+    border-bottom: 0;
+}
+
+.factory-sortable div.list-group-item {
+    cursor: default !important;
+}
+
 .sortable-factory-item {
     cursor: pointer;
+    padding: 0.5rem 1rem;
+}
+
+.factory-drag-handle {
+    cursor: grab !important;
+    color: var(--bs-secondary-color);
+}
+
+.factory-drag-handle:active {
+    cursor: grabbing !important;
 }
 
 /* Recipe drag-and-drop: SortableList wraps each recipe in a .list-group-item.

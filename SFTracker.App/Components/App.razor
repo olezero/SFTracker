@@ -54,7 +54,24 @@
 			// Dashboard cards (DashboardGrid): Gridstack reads each item's initial gs-* attributes
 			// from the markup, then reports every move/resize back to .NET to be saved.
 			dashboard: {
+				// gridstack.min.css only ships left/width rules for 12 columns; any other count needs
+				// its own `.gs-N > .grid-stack-item[gs-x/gs-w]` rules, which we generate once.
+				ensureColumnCss: function (columns) {
+					const id = 'sftracker-gs-' + columns;
+					if (columns === 12 || document.getElementById(id)) return;
+					const rules = [];
+					for (let i = 1; i <= columns; i++) {
+						const pct = (i * 100 / columns).toFixed(4) + '%';
+						rules.push(`.gs-${columns} > .grid-stack-item[gs-w="${i}"] { width: ${pct}; }`);
+						if (i < columns) rules.push(`.gs-${columns} > .grid-stack-item[gs-x="${i}"] { left: ${pct}; }`);
+					}
+					const style = document.createElement('style');
+					style.id = id;
+					style.textContent = rules.join('\n');
+					document.head.appendChild(style);
+				},
 				init: function (el, dotNetRef, columns, cellHeight) {
+					sftracker.dashboard.ensureColumnCss(columns);
 					const grid = GridStack.init({
 						column: columns,
 						cellHeight: cellHeight,

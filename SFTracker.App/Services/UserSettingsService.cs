@@ -15,6 +15,12 @@ public class UserSettings {
 
 	/// <summary>Dashboard card positions/sizes by card id (see <see cref="DashboardLayout"/>). Null = defaults.</summary>
 	public Dictionary<string, CardLayout>? Layout { get; set; }
+
+	/// <summary>
+	/// Grid column count <see cref="Layout"/> was saved under, so a layout from before a change to
+	/// <see cref="DashboardLayout.Columns"/> can be rescaled on load. Missing = the original 12.
+	/// </summary>
+	public int? LayoutColumns { get; set; }
 }
 
 /// <summary>
@@ -72,6 +78,7 @@ public class UserSettingsService {
 		if (string.IsNullOrWhiteSpace(settings.DatabasePath)) {
 			settings.DatabasePath = null;
 		}
+		settings.LayoutColumns = settings.Layout == null ? null : DashboardLayout.Columns;
 
 		await m_saveLock.WaitAsync();
 		try {
@@ -106,7 +113,13 @@ public class UserSettingsService {
 		}
 
 		try {
-			return JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(FilePath), s_jsonOptions) ?? new UserSettings();
+			var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(FilePath), s_jsonOptions) ?? new UserSettings();
+			var savedColumns = settings.LayoutColumns ?? 12;
+			if (settings.Layout != null && savedColumns != DashboardLayout.Columns && savedColumns > 0) {
+				settings.Layout = DashboardLayout.Rescale(settings.Layout, savedColumns);
+				settings.LayoutColumns = DashboardLayout.Columns;
+			}
+			return settings;
 		} catch (JsonException) {
 			// A broken file shouldn't stop the app from starting; fall back to the defaults.
 			return new UserSettings();

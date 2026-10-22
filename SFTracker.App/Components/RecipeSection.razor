@@ -22,8 +22,9 @@
 					style="width: 48px; height: 48px; object-fit: contain;" onerror="this.style.visibility='hidden'">
 			}
 
-		<!-- Title + inputs/outputs -->
-		<div class="flex-grow-1">
+		<!-- Title + inputs/outputs. Clicking anywhere here that isn't a more specific control opens the
+		     editor; the specific controls stop the (Blazor-side) propagation so they keep their own action. -->
+		<div class="flex-grow-1 recipe-row-body" @onclick="() => ShowEditRecipeModal(factoryRecipe)">
 			<div class="fw-bold mb-1 d-flex align-items-center">
 				<span>@factoryRecipe.Recipe.Name</span>
 				@if (factoryRecipe.IsSlooped)
@@ -32,7 +33,7 @@
 				}
 				<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
 					title="@MultiplierTitle(factoryRecipe)"
-					@onclick="() => ShowEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
+					@onclick="() => ShowEditRecipeModal(factoryRecipe, highlightMultiplier: true)" @onclick:stopPropagation>@FormatNumber(factoryRecipe.Multiplier) x</span>
 			</div>
 			<div class="row g-0">
 				<!-- Recipe Inputs -->
@@ -44,7 +45,7 @@
 						<div class="d-flex align-items-center mb-1">
 							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
 								title="Click to edit this rate"
-								@onclick="() => ShowEditRecipeModal(factoryRecipe, input.Id, null)">
+								@onclick="() => ShowEditRecipeModal(factoryRecipe, input.Id, null)" @onclick:stopPropagation>
 								<img src="@input.Part.ImageUrl" alt="@input.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">
@@ -57,7 +58,7 @@
 								@RecipeRate(input.GetQuantityPerMinute(1, FluidDivisor), factoryRecipe.Multiplier, false,
 									input.GetQuantityPerMinute(factoryRecipe, FluidDivisor), isEnabled)
 							</div>
-							<div class="btn-group ms-2 me-2 flex-shrink-0 ingredient-actions" role="group">
+							<div class="btn-group ms-2 me-2 flex-shrink-0 ingredient-actions" role="group" @onclick:stopPropagation>
 								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
 									disabled="@(producers.Count == 0)" title="Add a recipe that produces @input.Part.Name">
 									<i class="bi bi-plus-lg"></i>
@@ -90,14 +91,14 @@
 						<div class="d-flex align-items-center mb-1">
 							<div class="d-flex align-items-center flex-grow-1 @(isEnabled ? "" : "opacity-50")" style="cursor: pointer;"
 								title="Click to edit this rate"
-								@onclick="() => ShowEditRecipeModal(factoryRecipe, null, output.Id)">
+								@onclick="() => ShowEditRecipeModal(factoryRecipe, null, output.Id)" @onclick:stopPropagation>
 								<img src="@output.Part.ImageUrl" alt="@output.Part.Name" class="me-2"
 									style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
 								<span class="me-2 flex-grow-1">@output.Part.Name</span>
 								@RecipeRate(output.GetQuantityPerMinute(1, fluidDivisor: FluidDivisor), factoryRecipe.Multiplier, factoryRecipe.IsSlooped,
 									output.GetQuantityPerMinute(factoryRecipe, FluidDivisor), isEnabled)
 							</div>
-							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group">
+							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group" @onclick:stopPropagation>
 								<button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" data-bs-auto-close="true"
 									disabled="@(consumers.Count == 0)" title="Add a recipe that consumes @output.Part.Name">
 									<i class="bi bi-plus-lg"></i>
@@ -131,7 +132,7 @@
 							</div>
 							@* Same button group as the ingredient rows so the rate columns line up; power has no
 							   consuming recipes and isn't part of the balance, so both are disabled. *@
-							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group">
+							<div class="btn-group ms-2 flex-shrink-0 ingredient-actions" role="group" @onclick:stopPropagation>
 								<button type="button" class="btn btn-outline-secondary" disabled title="No recipe consumes power"><i class="bi bi-plus-lg"></i></button>
 								<button type="button" class="btn btn-outline-secondary" disabled title="Power is not part of the balance"><i class="bi bi-eye-slash"></i></button>
 							</div>

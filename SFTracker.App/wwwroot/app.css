@@ -325,3 +325,8 @@ a, .btn-link {
 	padding: 0 0.4rem;
 	line-height: 1.6;
 }
+
+/* RecipeSection: the whole row body opens the editor; nested controls keep their own cursor/action. */
+.recipe-row-body {
+	cursor: pointer;
+}

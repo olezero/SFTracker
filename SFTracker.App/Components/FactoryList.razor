@@ -14,16 +14,13 @@
 		{
 			<SortableList TItem="Factory" Data="SortedFactories" Context="factory" OnUpdate="OnFactoryListUpdate">
 				<ItemTemplate>
-					<div class="d-flex w-100 justify-content-between sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
+					<div class="d-flex w-100 justify-content-between align-items-center sortable-factory-item @(SelectedFactory?.Id == factory.Id ? "selected" : "")"
 						@onclick="() => SelectFactory(factory)">
-						<div>
-							<h6 class="mb-1">@factory.Name</h6>
-							@if (factory.Network != null)
-							{
-								<small class="text-muted" title="Network"><i class="bi bi-diagram-3"></i> @factory.Network.Name</small>
-							}
-						</div>
-						<small>@GetFactoryInputCount(factory) inputs, @GetFactoryOutputCount(factory) outputs</small>
+						<h6 class="mb-0 text-truncate" title="@factory.Name">@factory.Name</h6>
+						@if (factory.Network != null)
+						{
+							<small class="text-muted text-nowrap ms-2" title="Network"><i class="bi bi-diagram-3"></i> @factory.Network.Name</small>
+						}
 					</div>
 				</ItemTemplate>
 			</SortableList>
@@ -215,8 +212,4 @@
 		await OnFactoryListChanged.InvokeAsync();
 	}
 
-	private int GetFactoryInputCount(Factory factory) => factory.Inputs.Count + factory.Recipes.Sum(r =>
-	r.Recipe.Inputs.Count);
-	private int GetFactoryOutputCount(Factory factory) => factory.Outputs.Count + factory.Recipes.Sum(r =>
-	r.Recipe.Outputs.Count);
 }

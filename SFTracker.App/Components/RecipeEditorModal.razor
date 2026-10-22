@@ -85,7 +85,11 @@
 				<span>machines at</span>
 				<input type="text" inputmode="decimal" class="form-control form-control-sm @(ClockCalculator.IsValidClock(clockPercent) ? "" : "is-invalid")" style="width: 110px;"
 					value="@clockText" @oninput="OnClockChange" title="Clock speed per machine. @ExpressionHint">
-				<span>% each</span>
+				<span>% each, producing</span>
+				<span class="fw-bold" title="Per machine at that clock speed (sloop and fluid divisor included)">
+					@string.Join(" + ", currentRecipe.Outputs.OrderBy(o => o.Id).Select(o => $"{FormatNumber(PerMachineRate(o))} {o.Part.Name}"))
+				</span>
+				<span>/min each</span>
 				@if (MachineSpeed != 1)
 				{
 					<span class="text-muted">(@currentRecipe.Machine at @FormatNumber(MachineSpeed)× speed)</span>
@@ -168,6 +172,9 @@
 	private double MachineSpeed => currentRecipe == null ? 1 : GameSettings?.SpeedOf(currentRecipe.Machine) ?? 1;
 	// The multiplier is in 1x machine-equivalents; a faster (modded) machine covers more of it.
 	private double RealMachineEquivalents => multiplier / MachineSpeed;
+	/// <summary>What one real machine makes of an output per minute at the helper's clock speed.</summary>
+	private double PerMachineRate(DbRecipeOutput output) =>
+		output.GetQuantityPerMinute(1.0, isSlooped, FluidDivisor) * MachineSpeed * clockPercent / 100;
 
 	// Field to highlight and focus when the modal opens.
 	private int? highlightInputId;

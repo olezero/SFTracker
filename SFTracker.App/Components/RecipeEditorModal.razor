@@ -1,5 +1,6 @@
 @using static SFTracker.Constants.DisplayConstants
 @inject IJSRuntime JSRuntime
+@inject GameInfoService GameInfoService
 
 @* Shared add/edit modal for a factory recipe. Opened via ShowAddAsync / ShowEditAsync, which hand it
    its state directly (no parameters), so a parent re-render can't reset in-progress edits. *@
@@ -71,6 +72,16 @@
 								@oninput="e => OnOutputChange(output, e)" title="@ExpressionHint">
 						</div>
 					}
+					@if (PowerPerMachine is double powerPerMachine)
+					{
+						@* Generators: power at 100% clock per 1x machine-equivalent (not slooped, no fluid divisor). *@
+						<div class="d-flex align-items-center mb-2" title="Power output of all machine-equivalents at 100% clock">
+							<i class="bi bi-lightning-charge-fill text-warning me-2" style="width: 24px; text-align: center;"></i>
+							<span class="flex-grow-1">Power (MW)</span>
+							<input type="text" inputmode="decimal" class="form-control ms-2 form-control-sm" style="width: 120px;"
+								value="@powerText" @oninput="e => OnPowerChange(powerPerMachine, e)" title="@ExpressionHint">
+						</div>
+					}
 				</div>
 			</div>
 			@* Clock speed helper: how to split the multiplier across real machines. Pure calculator,
@@ -85,11 +96,13 @@
 				<span>machines at</span>
 				<input type="text" inputmode="decimal" class="form-control form-control-sm @(ClockCalculator.IsValidClock(clockPercent) ? "" : "is-invalid")" style="width: 110px;"
 					value="@clockText" @oninput="OnClockChange" title="Clock speed per machine. @ExpressionHint">
-				<span>% each, producing</span>
-				<span class="fw-bold" title="Per machine at that clock speed (sloop and fluid divisor included)">
-					@string.Join(" + ", currentRecipe.Outputs.OrderBy(o => o.Id).Select(o => $"{FormatNumber(PerMachineRate(o))} {o.Part.Name}"))
-				</span>
-				<span>/min each</span>
+				<span>% each</span>
+				@if (ProducingText() is string producing)
+				{
+					<span>, producing</span>
+					<span class="fw-bold" title="Per machine at that clock speed (sloop and fluid divisor included)">@producing</span>
+					<span>each</span>
+				}
 				@if (MachineSpeed != 1)
 				{
 					<span class="text-muted">(@currentRecipe.Machine at @FormatNumber(MachineSpeed)× speed)</span>
@@ -176,6 +189,30 @@
 	private double PerMachineRate(DbRecipeOutput output) =>
 		output.GetQuantityPerMinute(1.0, isSlooped, FluidDivisor) * MachineSpeed * clockPercent / 100;
 
+	private double? PowerPerMachine => currentRecipe == null ? null : GameInfoService.GetGeneratorPowerMW(currentRecipe.Machine);
+	private string powerText = "";
+
+	/// <summary>"12 Iron Plate + 3 Screw /min" or "250 MW" per real machine; null when there is nothing to show.</summary>
+	private string? ProducingText() {
+		if (currentRecipe == null) {
+			return null;
+		}
+		var parts = currentRecipe.Outputs.OrderBy(o => o.Id).Select(o => $"{FormatNumber(PerMachineRate(o))} {o.Part.Name}").ToList();
+		if (parts.Count > 0) {
+			return string.Join(" + ", parts) + " /min";
+		}
+		return PowerPerMachine is double power ? $"{FormatNumber(power * MachineSpeed * clockPercent / 100)} MW" : null;
+	}
+
+	private void OnPowerChange(double powerPerMachine, ChangeEventArgs e) {
+		var text = e.Value?.ToString() ?? "";
+		if (ExpressionEvaluator.TryEvaluate(text, out var value)) {
+			multiplier = value / powerPerMachine;
+			RecalculateRates();
+		}
+		powerText = text;
+	}
+
 	// Field to highlight and focus when the modal opens.
 	private int? highlightInputId;
 	private int? highlightOutputId;
@@ -227,6 +264,9 @@
 		}
 		foreach (var output in currentRecipe.Outputs) {
 			outputTexts[output.Id] = FormatNumber(output.GetQuantityPerMinute(multiplier, isSlooped, FluidDivisor));
+		}
+		if (PowerPerMachine is double power) {
+			powerText = FormatNumber(power * multiplier);
 		}
 		if (!machinesEdited) {
 			machines = ClockCalculator.SuggestMachineCount(RealMachineEquivalents);

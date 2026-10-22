@@ -4,11 +4,16 @@
 <div class="card">
 	<div class="card-header d-flex justify-content-between align-items-center">
 		<h5 class="mb-0">Resource Balance</h5>
-		<button class="btn btn-outline-primary btn-sm" @onclick="RefreshBalance">
-			<i class="bi bi-arrow-clockwise"></i>
-		</button>
-		@* Scope: everything, one network, or one factory *@
-		<div>
+		@* Scope: everything, one network, or one factory. A factory in a network can also be
+		   viewed through its network: its own parts, but with the network's totals. *@
+		<div class="d-flex align-items-center gap-3">
+			@if (ScopedNetworkId() != null)
+			{
+				<div class="form-check form-switch mb-0" title="Show this factory's parts with the whole network's production and consumption, as if supplied through the network">
+					<input class="form-check-input" type="checkbox" id="balance-network-view" @bind="networkView" @bind:after="Recalculate">
+					<label class="form-check-label text-nowrap" for="balance-network-view"><small>Network view</small></label>
+				</div>
+			}
 			<select class="form-select form-select-sm" @bind="selectedScope" @bind:after="Recalculate">
 				<option value="@AllScope">All Factories</option>
 				@if (networks.Count > 0)
@@ -43,42 +48,19 @@
 					</tr>
 				</thead>
 				<tbody>
-					@foreach (var part in partBalances.Where(IsCategoryShown).OrderByDescending(p => p.Balance).ThenBy(p => p.Part.Name))
+					@foreach (var part in VisibleRows(fromNetwork: false))
 					{
-						var category = GetCategory(part);
-						<tr>
-							<td style="max-width: 0;">
-								<div class="d-flex align-items-center">
-									<img src="@part.Part.ImageUrl" alt="@part.Part.Name" class="me-2 flex-shrink-0"
-										style="width: 20px; height: 20px; object-fit: contain;"
-										onerror="this.style.display='none'">
-									<span class="text-truncate flex-grow-1" title="@part.Part.Name">@part.Part.Name</span>
-								</div>
-							</td>
-							<td>
-								<span class="text-info">@part.Production.ToString(DisplayConstants.DecimalFormat)</span>
-							</td>
-							<td>
-								<i class="bi bi-arrow-right-short"></i>
-							</td>
-							<td class="text-end">
-								<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
-							</td>
-							<td class="text-end">
-								@if (category == BalanceCategory.Balanced)
-								{
-									<span class="text-secondary fw-bold">0.0</span>
-								}
-								else if (category == BalanceCategory.Surplus)
-								{
-									<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
-								}
-								else
-								{
-									<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
-								}
-							</td>
+						@BalanceRow(part)
+					}
+					@if (VisibleRows(fromNetwork: true).Any())
+					{
+						<tr class="balance-network-divider" title="Parts other factories in the network also produce or consume; totals are the network's, not this factory's own">
+							<td colspan="5"><small><i class="bi bi-diagram-3 me-1"></i>Network</small></td>
 						</tr>
+						@foreach (var part in VisibleRows(fromNetwork: true))
+						{
+							@BalanceRow(part)
+						}
 					}
 					@if (!partBalances.Any(IsCategoryShown))
 					{
@@ -126,10 +108,14 @@
 	private const string AllScope = "all";
 	private const string NetworkScopePrefix = "network:";
 	private string selectedScope = AllScope;
+	// When a networked factory is selected: show its parts with the network's totals instead of its own.
+	private bool networkView = true;
 
 	private List<Factory> factories = [];
 	private List<Network> networks = [];
 	private List<PartBalance> partBalances = [];
+	// Network view: parts whose totals differ from this factory's own because other network members touch them.
+	private HashSet<int> networkPartIds = [];
 	private int lastGameId = -1;
 	private int lastFluidDivisor = -1;
 	private bool hasLoaded;
@@ -188,7 +174,67 @@
 	/// <summary>Recomputes the balance for the selected scope from the already loaded factories.</summary>
 	private void Recalculate() {
 		partBalances = BalanceCalculator.Calculate(ScopedFactories(), FluidDivisor);
+		networkPartIds = [];
+		if (networkView && ScopedNetworkId() is int networkId) {
+			// The factory's rows, but each taken from the network-wide balance: a part the network
+			// supplies shows the network's surplus/deficit rather than this factory's own. Rows whose
+			// numbers changed are listed under a "Network" divider.
+			var own = partBalances.ToDictionary(p => p.Part.Id);
+			partBalances = BalanceCalculator.Calculate(factories.Where(f => f.NetworkId == networkId), FluidDivisor)
+				.Where(p => own.ContainsKey(p.Part.Id))
+				.ToList();
+			networkPartIds = partBalances
+				.Where(p => Math.Abs(p.Production - own[p.Part.Id].Production) > DisplayConstants.BalanceThreshold
+					|| Math.Abs(p.Consumption - own[p.Part.Id].Consumption) > DisplayConstants.BalanceThreshold)
+				.Select(p => p.Part.Id)
+				.ToHashSet();
+		}
 	}
+
+	private IEnumerable<PartBalance> VisibleRows(bool fromNetwork) =>
+		partBalances.Where(p => networkPartIds.Contains(p.Part.Id) == fromNetwork && IsCategoryShown(p))
+			.OrderByDescending(p => p.Balance).ThenBy(p => p.Part.Name);
+
+	private RenderFragment BalanceRow(PartBalance part) {
+		var category = GetCategory(part);
+		return @<tr>
+			<td style="max-width: 0;">
+				<div class="d-flex align-items-center">
+					<img src="@part.Part.ImageUrl" alt="@part.Part.Name" class="me-2 flex-shrink-0"
+						style="width: 20px; height: 20px; object-fit: contain;"
+						onerror="this.style.display='none'">
+					<span class="text-truncate flex-grow-1" title="@part.Part.Name">@part.Part.Name</span>
+				</div>
+			</td>
+			<td>
+				<span class="text-info">@part.Production.ToString(DisplayConstants.DecimalFormat)</span>
+			</td>
+			<td>
+				<i class="bi bi-arrow-right-short"></i>
+			</td>
+			<td class="text-end">
+				<span class="text-info">@part.Consumption.ToString(DisplayConstants.DecimalFormat)</span>
+			</td>
+			<td class="text-end">
+				@if (category == BalanceCategory.Balanced)
+				{
+					<span class="text-secondary fw-bold">0.0</span>
+				}
+				else if (category == BalanceCategory.Surplus)
+				{
+					<span class="text-success fw-bold">+@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+				}
+				else
+				{
+					<span class="text-danger fw-bold">@part.Balance.ToString(DisplayConstants.DecimalFormat)</span>
+				}
+			</td>
+		</tr>;
+	}
+
+	/// <summary>The network of the selected factory, or null when the scope isn't a networked factory.</summary>
+	private int? ScopedNetworkId() =>
+		int.TryParse(selectedScope, out var factoryId) ? factories.FirstOrDefault(f => f.Id == factoryId)?.NetworkId : null;
 
 	private IEnumerable<Factory> ScopedFactories() {
 		if (TryParseNetworkScope(selectedScope, out var networkId)) {

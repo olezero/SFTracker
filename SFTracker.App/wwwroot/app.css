@@ -301,3 +301,14 @@ a, .btn-link {
 	height: 20px;
 	object-fit: contain;
 }
+
+/* ResourceBalance "Network view": divider row between the factory's own parts and the ones
+   whose totals come from the rest of the network. */
+.balance-network-divider td {
+	color: #9aa0a6;
+	background-color: #2b2f33;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding-top: 0.15rem;
+	padding-bottom: 0.15rem;
+}

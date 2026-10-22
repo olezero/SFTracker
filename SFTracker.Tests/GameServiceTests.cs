@@ -33,6 +33,21 @@ public class GameServiceTests {
 	}
 
 	[Test]
+	public async Task Settings_are_stored_as_json_with_default_speeds_dropped() {
+		var game = await m_service.CreateGameAsync("Modded");
+
+		await m_service.UpdateSettingsAsync(game.Id, new GameSettings { MachineSpeeds = { ["Constructor"] = 3, ["Smelter"] = 1 } });
+
+		await using var fresh = m_db.CreateContext();
+		var loaded = await fresh.Games.SingleAsync(g => g.Id == game.Id);
+		Assert.Multiple(() => {
+			Assert.That(loaded.Settings.SpeedOf("Constructor"), Is.EqualTo(3));
+			Assert.That(loaded.Settings.MachineSpeeds.ContainsKey("Smelter"), Is.False, "1x is the default and isn't stored");
+			Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => m_service.UpdateSettingsAsync(game.Id, new GameSettings { MachineSpeeds = { ["Constructor"] = 0 } }));
+		});
+	}
+
+	[Test]
 	public async Task The_most_recently_opened_game_wins() {
 		var first = await m_service.CreateGameAsync("First");
 		var second = await m_service.CreateGameAsync("Second");

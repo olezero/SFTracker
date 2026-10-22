@@ -67,6 +67,25 @@ public class GameService {
 		}
 	}
 
+	/// <summary>
+	/// Replaces the game's mod settings. Machine speeds must be positive; entries at exactly 1 (the
+	/// default) are dropped so the stored JSON stays minimal.
+	/// </summary>
+	public async Task UpdateSettingsAsync(int id, GameSettings settings) {
+		if (settings.MachineSpeeds.Values.Any(speed => speed <= 0 || double.IsNaN(speed) || double.IsInfinity(speed))) {
+			throw new ArgumentOutOfRangeException(nameof(settings), "Machine speeds must be positive numbers.");
+		}
+		settings.MachineSpeeds = settings.MachineSpeeds
+			.Where(kv => !string.IsNullOrWhiteSpace(kv.Key) && kv.Value != 1)
+			.ToDictionary(kv => kv.Key, kv => kv.Value);
+		var game = await m_context.Games.FindAsync(id);
+		if (game != null) {
+			game.SettingsJson = settings.ToJson();
+			game.UpdatedAt = DateTime.UtcNow;
+			await m_context.SaveChangesAsync();
+		}
+	}
+
 	public async Task TouchGameAsync(int id) {
 		var game = await m_context.Games.FindAsync(id);
 		if (game != null) {

@@ -36,6 +36,8 @@ public class GameTransferService {
 		public DateTime ExportedAt { get; set; } = DateTime.UtcNow;
 		public string Name { get; set; } = string.Empty;
 		public int FluidDivisor { get; set; } = 1;
+		/// <summary>Per-game mod settings (machine speeds, …); absent in older exports.</summary>
+		public GameSettings? Settings { get; set; }
 		public List<string> Networks { get; set; } = [];
 		public List<FactoryExport> Factories { get; set; } = [];
 	}
@@ -93,6 +95,7 @@ public class GameTransferService {
 		var export = new GameExport {
 			Name = game.Name,
 			FluidDivisor = game.FluidDivisor,
+			Settings = game.Settings,
 			Networks = networks.Select(n => n.Name).ToList(),
 			Factories = factories.Select(f => new FactoryExport {
 				Name = f.Name,
@@ -184,7 +187,8 @@ public class GameTransferService {
 		var fluidDivisor = Constants.FluidParts.AllowedDivisors.Contains(export.FluidDivisor) ? export.FluidDivisor : 1;
 		var game = new Game {
 			Name = await UniqueGameNameAsync($"{export.Name.Trim()} (imported)"),
-			FluidDivisor = fluidDivisor
+			FluidDivisor = fluidDivisor,
+			SettingsJson = (export.Settings ?? new GameSettings()).ToJson()
 		};
 
 		var networksByName = export.Networks.Distinct().ToDictionary(n => n, n => new Network { Name = n, Game = game });

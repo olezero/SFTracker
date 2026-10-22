@@ -1,0 +1,124 @@
+@using static SFTracker.Constants.DisplayConstants
+
+@* Per-game settings: the fluid divisor (a column on Game) and the mod settings JSON (GameSettings).
+   Nothing is saved until "Save"; the owner (FactoryManager) persists through GameService. *@
+<Modal @ref="modal" Title="@($"Game settings: {Game?.Name}")">
+	<BodyTemplate>
+		<div class="mb-3 d-flex align-items-center">
+			<label for="gameFluidDivisor" class="form-label mb-0 flex-grow-1" title="Fluid-scaling mod: every fluid amount in every recipe is divided by this">
+				<i class="bi bi-droplet"></i> Fluids ÷
+			</label>
+			<select id="gameFluidDivisor" class="form-select form-select-sm w-auto" @bind="fluidDivisor">
+				@foreach (var divisor in FluidParts.AllowedDivisors)
+				{
+					<option value="@divisor">@divisor</option>
+				}
+			</select>
+		</div>
+		<hr>
+		<div class="form-label mb-0">Machine speeds</div>
+		<div class="form-text mt-0 mb-2">
+			For mods with faster machine tiers, e.g. 3 for a Mk2 constructor that runs 3× faster. Factory data stays in
+			1× machine terms; this only changes how the clock speed helper counts real machines.
+		</div>
+		<div @onkeydown="OnKeyDown">
+			<table class="table table-sm table-dark mb-0">
+				<tbody>
+					@foreach (var machine in MachineNames)
+					{
+						<tr>
+							<td class="align-middle">@machine</td>
+							<td class="text-end" style="width: 140px;">
+								<div class="input-group input-group-sm">
+									<input type="number" class="form-control text-end @(IsValid(machine) ? "" : "is-invalid")" min="0.01" step="any"
+										value="@SpeedText(machine)" @oninput="e => OnSpeedInput(machine, e)" placeholder="1">
+									<span class="input-group-text">×</span>
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		@if (error != null)
+		{
+			<div class="alert alert-danger mt-3 mb-0 py-2">@error</div>
+		}
+	</BodyTemplate>
+	<FooterTemplate>
+		<Button Color="ButtonColor.Secondary" @onclick="Hide">Cancel</Button>
+		<Button Color="ButtonColor.Primary" @onclick="Save" Disabled="@(!speeds.Keys.All(IsValid))">Save</Button>
+	</FooterTemplate>
+</Modal>
+
+@code {
+	[Parameter] public Game? Game { get; set; }
+	[Parameter] public IEnumerable<string> MachineNames { get; set; } = [];
+	/// <summary>Fires on Save with the chosen fluid divisor and the edited mod settings.</summary>
+	[Parameter] public EventCallback<(int fluidDivisor, GameSettings settings)> OnSave { get; set; }
+
+	private Modal modal = default!;
+	private int fluidDivisor = 1;
+	// What each speed box shows; empty or 1 = default. Parsed on save.
+	private readonly Dictionary<string, string> speeds = [];
+	private string? error;
+
+	public async Task ShowAsync()
+	{
+		if (Game == null) return;
+		fluidDivisor = Game.FluidDivisor;
+		speeds.Clear();
+		foreach (var machine in MachineNames)
+		{
+			speeds[machine] = Game.Settings.MachineSpeeds.TryGetValue(machine, out var speed) ? FormatNumber(speed) : "";
+		}
+		error = null;
+		await modal.ShowAsync();
+	}
+
+	private string SpeedText(string machine) => speeds.TryGetValue(machine, out var text) ? text : "";
+
+	private void OnSpeedInput(string machine, ChangeEventArgs e) => speeds[machine] = e.Value?.ToString() ?? "";
+
+	private static bool TryParseSpeed(string text, out double speed)
+	{
+		speed = 1;
+		return string.IsNullOrWhiteSpace(text)
+			|| (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out speed) && speed > 0);
+	}
+
+	private bool IsValid(string machine) => TryParseSpeed(SpeedText(machine), out _);
+
+	private async Task Hide()
+	{
+		await modal.HideAsync();
+	}
+
+	private async Task OnKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter") await Save();
+		else if (e.Key == "Escape") await Hide();
+	}
+
+	private async Task Save()
+	{
+		if (Game == null) return;
+		// Keep settings this build doesn't know about (GameSettings.Extra) by editing a fresh parse.
+		var settings = GameSettings.Parse(Game.SettingsJson);
+		settings.MachineSpeeds = [];
+		foreach (var (machine, text) in speeds)
+		{
+			if (!TryParseSpeed(text, out var speed))
+			{
+				error = $"Speed for {machine} must be a positive number.";
+				return;
+			}
+			if (speed != 1)
+			{
+				settings.MachineSpeeds[machine] = speed;
+			}
+		}
+		await OnSave.InvokeAsync((fluidDivisor, settings));
+		await Hide();
+	}
+}

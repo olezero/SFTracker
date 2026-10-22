@@ -86,6 +86,10 @@
 				<input type="text" inputmode="decimal" class="form-control form-control-sm @(ClockCalculator.IsValidClock(clockPercent) ? "" : "is-invalid")" style="width: 110px;"
 					value="@clockText" @oninput="OnClockChange" title="Clock speed per machine. @ExpressionHint">
 				<span>% each</span>
+				@if (MachineSpeed != 1)
+				{
+					<span class="text-muted">(@currentRecipe.Machine at @FormatNumber(MachineSpeed)× speed)</span>
+				}
 				@if (!ClockCalculator.IsValidClock(clockPercent))
 				{
 					<span class="text-danger">Clock speed must be between @ClockCalculator.MinClockPercent% and @ClockCalculator.MaxClockPercent%</span>
@@ -128,6 +132,8 @@
 	[Parameter] public EventCallback<(int recipeId, double multiplier, bool isSlooped, int? factoryRecipeId)> OnSave { get; set; }
 	/// <summary>The factory the recipe belongs to; enables the per-input "imported from the world" toggles.</summary>
 	[Parameter] public Factory? Factory { get; set; }
+	/// <summary>The game's mod settings (from FactoryManager); the clock helper divides by the machine speed.</summary>
+	[CascadingParameter] public GameSettings? GameSettings { get; set; }
 	/// <summary>Fires when a world toggle is clicked, with the part id. The parent persists it; the toggle reflects <see cref="Factory"/>.</summary>
 	[Parameter] public EventCallback<int> OnToggleWorldPart { get; set; }
 
@@ -158,6 +164,10 @@
 	private double machines = 1;
 	private double clockPercent = 100;
 	private bool machinesEdited;
+
+	private double MachineSpeed => currentRecipe == null ? 1 : GameSettings?.SpeedOf(currentRecipe.Machine) ?? 1;
+	// The multiplier is in 1x machine-equivalents; a faster (modded) machine covers more of it.
+	private double RealMachineEquivalents => multiplier / MachineSpeed;
 
 	// Field to highlight and focus when the modal opens.
 	private int? highlightInputId;
@@ -212,10 +222,10 @@
 			outputTexts[output.Id] = FormatNumber(output.GetQuantityPerMinute(multiplier, isSlooped, FluidDivisor));
 		}
 		if (!machinesEdited) {
-			machines = ClockCalculator.SuggestMachineCount(multiplier);
+			machines = ClockCalculator.SuggestMachineCount(RealMachineEquivalents);
 			machinesText = FormatNumber(machines);
 		}
-		clockPercent = ClockCalculator.ClockPercent(multiplier, machines);
+		clockPercent = ClockCalculator.ClockPercent(RealMachineEquivalents, machines);
 		clockText = FormatNumber(clockPercent);
 	}
 
@@ -224,7 +234,7 @@
 		if (ExpressionEvaluator.TryEvaluate(text, out var value) && value > 0) {
 			machines = value;
 			machinesEdited = true;
-			clockPercent = ClockCalculator.ClockPercent(multiplier, machines);
+			clockPercent = ClockCalculator.ClockPercent(RealMachineEquivalents, machines);
 			clockText = FormatNumber(clockPercent);
 		}
 		machinesText = text;
@@ -234,7 +244,7 @@
 		var text = e.Value?.ToString() ?? "";
 		if (ExpressionEvaluator.TryEvaluate(text, out var value) && value > 0) {
 			clockPercent = value;
-			machines = ClockCalculator.MachinesAt(multiplier, clockPercent);
+			machines = ClockCalculator.MachinesAt(RealMachineEquivalents, clockPercent);
 			machinesEdited = true;
 			machinesText = FormatNumber(machines);
 		}

@@ -35,7 +35,11 @@ When you add a column:
    `new("Recipes", "Machine", "TEXT NOT NULL DEFAULT ''")`.
 3. If existing rows need real data rather than the default, backfill them in code on startup
    (see `DataImportService.BackfillMachinesAsync` for the pattern).
-4. Run `dotnet test`; `SchemaUpgraderTests` checks the steps are idempotent.
+4. Add a test to `SchemaUpgraderTests` that drops the column from a fresh database and runs the
+   upgrader, so the step actually executes at least once (a fresh database already has the column,
+   so the existing tests would otherwise never run it). Then run `dotnet test`.
+5. The DDL goes through `ExecuteSqlRaw`, which treats `{` and `}` as format placeholders: a default
+   like `'{}'` crashes at startup. Use `''` (and parse empty as the default) instead.
 
 Rules:
 

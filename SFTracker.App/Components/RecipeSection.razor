@@ -31,7 +31,7 @@
 					<img src="images/Somersloop.png" alt="Slooped" title="Slooped: output doubled" class="ms-2 recipe-sloop-icon">
 				}
 				<span class="badge bg-secondary ms-auto text-center" style="min-width: 3.25rem; cursor: pointer;"
-					title="Machines needed - click to edit"
+					title="@MultiplierTitle(factoryRecipe)"
 					@onclick="() => ShowEditRecipeModal(factoryRecipe, highlightMultiplier: true)">@FormatNumber(factoryRecipe.Multiplier) x</span>
 			</div>
 			<div class="row g-0">
@@ -181,6 +181,16 @@
 	[Parameter] public List<Factory> Factories { get; set; } = [];
 	[Parameter] public int FluidDivisor { get; set; } = 1;
 	[Parameter] public EventCallback OnRecipeChanged { get; set; }
+	[CascadingParameter] public GameSettings? GameSettings { get; set; }
+
+	// The multiplier is in 1x machine-equivalents; with a modded faster machine say what that means.
+	private string MultiplierTitle(FactoryRecipe factoryRecipe)
+	{
+		var speed = GameSettings?.SpeedOf(factoryRecipe.Recipe.Machine) ?? 1;
+		return speed == 1
+			? "Machines needed - click to edit"
+			: $"1x machine-equivalents = {FormatNumber(factoryRecipe.Multiplier / speed)} × {factoryRecipe.Recipe.Machine} at {FormatNumber(speed)}× speed - click to edit";
+	}
 
 	// Recipes in manual display order; also the data source for the sortable list.
 	private List<FactoryRecipe> OrderedRecipes =>

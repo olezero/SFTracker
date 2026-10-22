@@ -34,6 +34,9 @@ public static class SchemaUpgrader {
 			"CREATE UNIQUE INDEX \"IX_FactoryWorldParts_FactoryId_PartId\" ON \"FactoryWorldParts\" (\"FactoryId\", \"PartId\")",
 			"CREATE INDEX \"IX_FactoryWorldParts_PartId\" ON \"FactoryWorldParts\" (\"PartId\")",
 		]),
+		// Empty rather than '{}': ExecuteSqlRaw treats braces as format placeholders. GameSettings.Parse
+		// reads an empty string as defaults, so existing rows behave exactly like fresh ones.
+		new AddColumn("Games", "Settings", "TEXT NOT NULL DEFAULT ''"),
 	];
 
 	/// <returns>The number of steps that were applied.</returns>

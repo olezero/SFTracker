@@ -4,10 +4,12 @@
 @inject UserSettingsService UserSettings
 
 <GameSelector Games="@games" SelectedGame="@selectedGame" SelectedGameChanged="@OnGameSelected"
-	OnGameOperation="@OnGameOperation" FluidDivisorChanged="@OnFluidDivisorChanged"
+	OnGameOperation="@OnGameOperation" GameSettingsChanged="@OnGameSettingsChanged" MachineNames="@MachineNames"
 	Networks="@networks" Factories="@factories" OnNetworksChanged="@LoadDataAndRefreshBalance" />
 
-@* The three cards sit in a Gridstack grid; see DashboardGrid. The wrappers are static on purpose. *@
+@* The three cards sit in a Gridstack grid; see DashboardGrid. The wrappers are static on purpose.
+   The game's mod settings cascade to whatever needs them (e.g. the recipe editor's clock helper). *@
+<CascadingValue Value="@GameSettings">
 <DashboardGrid>
 	<div class="grid-stack-item" gs-id="@DashboardLayout.Factories" @attributes="GridAttributes(DashboardLayout.Factories)">
 		<div class="grid-stack-item-content">
@@ -29,6 +31,7 @@
 		</div>
 	</div>
 </DashboardGrid>
+</CascadingValue>
 
 @code {
 	private ResourceBalance? resourceBalance;
@@ -46,6 +49,12 @@
 	private List<DbRecipe> allRecipes = [];
 
 	private int FluidDivisor => selectedGame?.FluidDivisor ?? 1;
+	private static readonly GameSettings s_defaultSettings = new();
+	private GameSettings GameSettings => selectedGame?.Settings ?? s_defaultSettings;
+	// Machine names for the game settings modal: the machines recipes run in, minus the ones that
+	// don't come in tiers (MachineSpeedSettings).
+	private IEnumerable<string> MachineNames =>
+		allRecipes.Select(r => r.Machine).Where(MachineSpeedSettings.IsListed).Distinct().OrderBy(m => m);
 
 	// Snapshot of the saved dashboard layout at startup. Gridstack reads these attributes once on init
 	// and owns the positions from then on, so they must not follow later changes to the settings.
@@ -97,13 +106,17 @@
 		await LoadData();
 	}
 
-	private async Task OnFluidDivisorChanged(int divisor) {
+	private async Task OnGameSettingsChanged((int fluidDivisor, GameSettings settings) args) {
 		if (selectedGame == null) {
 			return;
 		}
-		await GameService.SetFluidDivisorAsync(selectedGame.Id, divisor);
-		selectedGame.FluidDivisor = divisor;
-		// ResourceBalance recalculates when its FluidDivisor parameter changes on the re-render.
+		if (args.fluidDivisor != selectedGame.FluidDivisor) {
+			await GameService.SetFluidDivisorAsync(selectedGame.Id, args.fluidDivisor);
+			selectedGame.FluidDivisor = args.fluidDivisor;
+			// ResourceBalance recalculates when its FluidDivisor parameter changes on the re-render.
+		}
+		await GameService.UpdateSettingsAsync(selectedGame.Id, args.settings);
+		selectedGame.SettingsJson = args.settings.ToJson();
 	}
 
 	private async Task OnGameOperation((Game game, string operation) args) {

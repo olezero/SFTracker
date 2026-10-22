@@ -43,6 +43,7 @@ public class GameTransferServiceTests {
 		var plates = await factories.AddFactoryRecipeAsync(smelting.Id, plate.Id, 1);
 		await factories.ReorderFactoryRecipesAsync([plates.Id, slooped.Id]);
 		await factories.ToggleWorldPartAsync(smelting.Id, ore.Id);
+		await new GameService(m_context).UpdateSettingsAsync(game.Id, new GameSettings { MachineSpeeds = { ["Smelter"] = 4 } });
 
 		await factories.CreateFactoryAsync("Unassigned", game.Id);
 		return game;
@@ -62,6 +63,7 @@ public class GameTransferServiceTests {
 			Assert.That(export.Format, Is.EqualTo("sftracker-game"));
 			Assert.That(export.Name, Is.EqualTo("Save A"));
 			Assert.That(export.FluidDivisor, Is.EqualTo(2));
+			Assert.That(export.Settings!.SpeedOf("Smelter"), Is.EqualTo(4));
 			Assert.That(export.Networks, Is.EqualTo(new[] { "Copper line" }));
 			Assert.That(export.Factories.Select(f => f.Name), Is.EqualTo(new[] { "Smelting", "Unassigned" }));
 			Assert.That(smelting.Network, Is.EqualTo("Copper line"));

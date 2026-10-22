@@ -31,6 +31,28 @@ public class Game {
 	/// </summary>
 	public int FluidDivisor { get; set; } = 1;
 
+	/// <summary>Raw JSON of <see cref="Settings"/>; the column. Set via GameService.UpdateSettingsAsync.</summary>
+	[Column("Settings")]
+	public string SettingsJson { get; set; } = "{}";
+
+	private GameSettings? m_settings;
+	private string? m_settingsSource;
+
+	/// <summary>
+	/// Typed view of <see cref="SettingsJson"/> (parsed on demand, re-parsed when the JSON changes).
+	/// Mutating it does not persist anything: save through GameService.UpdateSettingsAsync.
+	/// </summary>
+	[NotMapped]
+	public GameSettings Settings {
+		get {
+			if (m_settings == null || !ReferenceEquals(m_settingsSource, SettingsJson)) {
+				m_settings = GameSettings.Parse(SettingsJson);
+				m_settingsSource = SettingsJson;
+			}
+			return m_settings;
+		}
+	}
+
 	// Navigation properties
 	[InverseProperty(nameof(Factory.Game))]
 	public ICollection<Factory> Factories { get; set; } = [];

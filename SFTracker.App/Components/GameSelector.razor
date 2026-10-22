@@ -31,16 +31,10 @@
 		<i class="bi bi-diagram-3"></i> Networks
 	</button>
 
-	<label class="text-muted mb-0 ms-4" for="fluidDivisor" title="Fluid-scaling mod: every fluid amount in every recipe is divided by this">
-		<i class="bi bi-droplet"></i> Fluids ÷
-	</label>
-	<select id="fluidDivisor" class="form-select form-select-sm w-auto" disabled="@(SelectedGame == null)"
-		value="@(SelectedGame?.FluidDivisor ?? 1)" @onchange="OnFluidDivisorChanged">
-		@foreach (var divisor in FluidParts.AllowedDivisors)
-		{
-			<option value="@divisor" selected="@(divisor == (SelectedGame?.FluidDivisor ?? 1))">@divisor</option>
-		}
-	</select>
+	<button class="btn btn-secondary btn-sm" title="Game settings: fluid divisor, machine speeds (mods)" disabled="@(SelectedGame == null)"
+		@onclick="() => gameSettingsModal.ShowAsync()">
+		<i class="bi bi-sliders"></i> Game settings
+	</button>
 
 	<button class="btn btn-secondary btn-sm ms-auto" title="Settings" @onclick="() => settingsModal.ShowAsync()">
 		<i class="bi bi-gear"></i>
@@ -48,6 +42,7 @@
 </div>
 
 <SettingsModal @ref="settingsModal" />
+<GameSettingsModal @ref="gameSettingsModal" Game="@SelectedGame" MachineNames="@MachineNames" OnSave="@GameSettingsChanged" />
 <GameTransferModals @ref="transferModals" OnImported="OnGameImported" />
 <NetworkManagerModal @ref="networkModal" GameId="@(SelectedGame?.Id ?? 0)" Networks="@Networks" Factories="@Factories" OnChanged="@OnNetworksChanged" />
 
@@ -84,7 +79,10 @@
 	[Parameter] public Game? SelectedGame { get; set; }
 	[Parameter] public EventCallback<Game?> SelectedGameChanged { get; set; }
 	[Parameter] public EventCallback<(Game game, string operation)> OnGameOperation { get; set; }
-	[Parameter] public EventCallback<int> FluidDivisorChanged { get; set; }
+	/// <summary>The game settings modal was saved: (fluid divisor, mod settings). The owner persists both.</summary>
+	[Parameter] public EventCallback<(int fluidDivisor, GameSettings settings)> GameSettingsChanged { get; set; }
+	/// <summary>Machine names (from the recipes) listed in the game settings modal.</summary>
+	[Parameter] public IEnumerable<string> MachineNames { get; set; } = [];
 	/// <summary>The selected game's networks and factories, shown in the network manager modal.</summary>
 	[Parameter] public List<Network> Networks { get; set; } = [];
 	[Parameter] public List<Factory> Factories { get; set; } = [];
@@ -94,6 +92,7 @@
 	private Modal createModal = default!;
 	private Modal renameModal = default!;
 	private SettingsModal settingsModal = default!;
+	private GameSettingsModal gameSettingsModal = default!;
 	private GameTransferModals transferModals = default!;
 	private NetworkManagerModal networkModal = default!;
 	private string editName = "";
@@ -107,14 +106,6 @@
 			{
 				await SelectedGameChanged.InvokeAsync(game);
 			}
-		}
-	}
-
-	private async Task OnFluidDivisorChanged(ChangeEventArgs e)
-	{
-		if (SelectedGame != null && int.TryParse(e.Value?.ToString(), out var divisor) && divisor != SelectedGame.FluidDivisor)
-		{
-			await FluidDivisorChanged.InvokeAsync(divisor);
 		}
 	}
 

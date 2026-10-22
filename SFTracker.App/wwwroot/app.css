@@ -250,10 +250,11 @@ a, .btn-link {
 	transition: none !important;
 }
 
-/* Recipe row rates (RecipeSection): "per-machine × multiplier [× 2] = total" in fixed-width
-   columns with tabular digits so the rows of a recipe line up. The factors are muted; the
-   total carries the badge and is what you read at a glance. Widths are generous enough for
-   4-decimal rates and 4-digit totals; a longer value only shifts its own recipe's rows. */
+/* Recipe row rates (RecipeSection): "per-machine × multiplier [× 2] = total". Every piece
+   sits in a fixed-width slot (not min-width) so the "×" and "=" land on the same x in every
+   row of every recipe; a wider value overflows its own slot instead of shifting the others.
+   The slots are sized for 4-decimal rates up to 5 digits. The factors are muted; the total
+   carries the badge and is what you read at a glance. */
 .recipe-rate {
 	display: inline-flex;
 	align-items: center;
@@ -264,22 +265,28 @@ a, .btn-link {
 }
 
 .recipe-rate-per {
-	min-width: 6.5ch;
+	width: 10ch;
 	text-align: right;
 }
 
-.recipe-rate-mult {
-	min-width: 6.5ch;
+.recipe-rate-op {
+	width: 1ch;
+	text-align: center;
 }
 
+.recipe-rate-mult {
+	width: 8ch;
+	text-align: left;
+}
+
+/* Always present so "=" stays put; empty unless the recipe is slooped. */
 .recipe-rate-sloop {
+	width: 3ch;
 	color: #c0a060;
 }
 
-/* Fixed-width slot, right-aligned, so a wider total badge grows leftwards into the slot
-   instead of pushing the "=" and the factors out of line. */
 .recipe-rate-total {
-	min-width: 3.9rem;
+	width: 5.8rem;
 	text-align: right;
 }
 

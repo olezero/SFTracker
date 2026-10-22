@@ -292,9 +292,10 @@
 			@if (multiplier != 1.0 || slooped)
 			{
 				<span class="recipe-rate-per">@FormatNumber(perMachine)</span>
-				<span class="recipe-rate-mult">× @FormatNumber(multiplier)@if (slooped)
-					{<span class="recipe-rate-sloop" title="Slooped: output doubled"> × 2</span>}</span>
-				<span>=</span>
+				<span class="recipe-rate-op">×</span>
+				<span class="recipe-rate-mult">@FormatNumber(multiplier)</span>
+				<span class="recipe-rate-sloop" title="@(slooped ? "Slooped: output doubled" : null)">@(slooped ? "× 2" : "")</span>
+				<span class="recipe-rate-op">=</span>
 			}
 			<span class="recipe-rate-total"><span class="badge @(isEnabled ? "bg-secondary" : "bg-dark")">@FormatNumber(total)</span></span>
 		</span>;

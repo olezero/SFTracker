@@ -2,6 +2,13 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Tell the browser the page is dark so its native scrollbars (and form-control chrome) are drawn
+   in the dark variant instead of the light default; the colours match the Darkly card tones. */
+html {
+    color-scheme: dark;
+    scrollbar-color: #555b61 #2b2f33;
+}
+
 a, .btn-link {
     color: #006bb7;
 }
